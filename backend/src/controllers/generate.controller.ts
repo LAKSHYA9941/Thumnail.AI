@@ -49,7 +49,7 @@ export async function rewriteQuery(req: Request, res: Response) {
       {
         headers: {
           Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          "HTTP-Referer": "http://localhost:5173",
+          "HTTP-Referer": "https://thumnail-ai.vercel.app",
           "X-Title": "ThumbnailAI",
         },
       }
@@ -97,7 +97,7 @@ export async function generateImages(req: AuthRequest, res: Response) {
       {
         headers: {
           Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          "HTTP-Referer": "http://localhost:5173",
+          "HTTP-Referer": "https://thumnail-ai.vercel.app",
           "X-Title": "ThumbnailAI",
         },
       }

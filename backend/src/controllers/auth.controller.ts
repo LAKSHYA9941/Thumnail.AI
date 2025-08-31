@@ -170,4 +170,3 @@ export async function getProfile(req: Request, res: Response) {
     res.status(500).json({ error: "Failed to get profile" });
   }
 }
-
