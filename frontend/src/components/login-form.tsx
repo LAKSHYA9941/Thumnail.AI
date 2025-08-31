@@ -37,7 +37,7 @@ export function LoginForm() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const API_BASE = "http://localhost:4000/api";
+  const API_BASE = "https://thumnail-ai.onrender.com/api";
 
 
   const loginForm = useForm<LoginFormData>({
