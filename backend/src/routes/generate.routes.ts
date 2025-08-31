@@ -4,8 +4,8 @@ import {
   rewriteQuery, 
   getUserThumbnails, 
   deleteThumbnail 
-} from "../controllers/generate.controller";
-import { authMiddleware } from "../middlewares/singleUserAuth";
+} from "../controllers/generate.controller.js";
+import { authMiddleware } from "../middlewares/singleUserAuth.js";
 
 const router: Router = express.Router();
 

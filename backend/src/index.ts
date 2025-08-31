@@ -1,9 +1,9 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import generateRoutes from './routes/generate.routes';
+import generateRoutes from './routes/generate.routes.js';
 import path from 'path';
-import authRoutes from './routes/auth.routes';
+import authRoutes from './routes/auth.routes.js';
 import mongoose from "mongoose";
 import { seedOneUser } from "./seed.js";
 import { fileURLToPath } from 'url';
