@@ -79,7 +79,7 @@ export default function Dashboard() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const { addToast } = useToast();
 
-  const API_BASE = "http://localhost:4000/api";
+  const API_BASE = "https://thumnail-ai.onrender.com/api";
 
   useEffect(() => {
     loadUserProfile();
