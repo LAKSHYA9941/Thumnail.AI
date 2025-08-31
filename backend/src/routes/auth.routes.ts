@@ -1,6 +1,6 @@
 import express from "express";
-import { register, login, googleAuth, getProfile } from "../controllers/auth.controller";
-import { authMiddleware } from "../middlewares/singleUserAuth";
+import { register, login, googleAuth, getProfile } from "../controllers/auth.controller.js";
+import { authMiddleware } from "../middlewares/singleUserAuth.js";
 
 const router = express.Router();
 

@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { User } from "./models/user.model";
+import { User } from "./models/user.model.js";
 
 export async function seedOneUser() {
   const email = "demouser@gmail.com";
