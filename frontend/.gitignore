@@ -22,3 +22,29 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Environment files
+.env
+.env.*
+.env.local
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Build output
+build
+out
+
+# Coverage reports
+coverage
+*.lcov
+
+# Misc
+*.tgz
+*.zip
+*.tar
+*.gz
+*.7z
+*.bak
+*.tmp
