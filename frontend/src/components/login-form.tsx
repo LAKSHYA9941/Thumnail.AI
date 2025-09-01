@@ -53,11 +53,27 @@ export function LoginForm() {
     setError("");
     try {
       const res = await axios.post(`${API_BASE}/auth/login`, data);
-      console.log("login success →", res.data);          // 1. should print the JSON you posted
+      console.log("login success →", res.data);
+      
+      // Save token to localStorage
       localStorage.setItem("token", res.data.token);
-      setTimeout(() => {
+      
+      // Fetch user profile to verify token and get user data
+      try {
+        const profileRes = await axios.get(`${API_BASE}/auth/profile`, {
+          headers: { Authorization: `Bearer ${res.data.token}` }
+        });
+        
+        console.log("profile fetch success →", profileRes.data);
+        
+        // Only redirect if profile fetch succeeds
         navigate("/dashboard");
-      }, 50);
+      } catch (profileError: any) {
+        console.error("profile fetch failed →", profileError);
+        // Remove invalid token
+        localStorage.removeItem("token");
+        setError("Authentication failed. Please try again.");
+      }
     } catch (err: any) {
       console.error("login error →", err);
       setError(err.response?.data?.error || "Login failed");
@@ -65,14 +81,33 @@ export function LoginForm() {
       setIsLoading(false);
     }
   };
+
   const onRegister = async (data: RegisterFormData) => {
     setIsLoading(true);
     setError("");
 
     try {
       const response = await axios.post(`${API_BASE}/auth/register`, data);
+      
+      // Save token to localStorage
       localStorage.setItem("token", response.data.token);
-      navigate("/dashboard");
+      
+      // Fetch user profile to verify token and get user data
+      try {
+        const profileRes = await axios.get(`${API_BASE}/auth/profile`, {
+          headers: { Authorization: `Bearer ${response.data.token}` }
+        });
+        
+        console.log("profile fetch success →", profileRes.data);
+        
+        // Only redirect if profile fetch succeeds
+        navigate("/dashboard");
+      } catch (profileError: any) {
+        console.error("profile fetch failed →", profileError);
+        // Remove invalid token
+        localStorage.removeItem("token");
+        setError("Registration successful but authentication failed. Please try logging in.");
+      }
     } catch (error: any) {
       setError(error.response?.data?.error || "Registration failed");
     } finally {

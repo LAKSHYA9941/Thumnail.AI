@@ -34,8 +34,7 @@ import {
 } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import axios from "axios";
-import { CopyQueryCard } from "@/components/ui/copyquery";
-import { useToast } from "@/components/ui/toast";
+import { CopyQueryCard } from "@/components/ui/copyquery";import { useToast } from "@/components/ui/toast";
 
 interface Thumbnail {
   _id: string;
@@ -93,14 +92,26 @@ export default function Dashboard() {
   const loadUserProfile = async () => {
     try {
       const token = localStorage.getItem("token");
-      if (!token) return;
+      if (!token) {
+        // No token found, redirect to login
+        window.location.href = "/";
+        return;
+      }
 
       const response = await axios.get(`${API_BASE}/auth/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setUser(response.data.user);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to load user profile:", error);
+      
+      // If token is invalid or expired, redirect to login
+      if (error.response?.status === 401) {
+        localStorage.removeItem("token");
+        window.location.href = "/";
+        return;
+      }
+      
       setError("Failed to load user profile");
     } finally {
       setIsLoading(false);

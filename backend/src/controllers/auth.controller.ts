@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { User } from "../models/user.model.js";
 import { OAuth2Client } from "google-auth-library";
+import { AuthRequest } from "../middlewares/singleUserAuth.js";
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -149,9 +150,14 @@ export async function googleAuth(req: Request, res: Response) {
   }
 }
 
-export async function getProfile(req: Request, res: Response) {
+export async function getProfile(req: AuthRequest, res: Response) {
   try {
-    const user = await User.findById(req.user?.userId).select("-password");
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = await User.findById(userId).select("-password");
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
