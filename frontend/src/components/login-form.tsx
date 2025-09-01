@@ -54,8 +54,10 @@ export function LoginForm() {
     try {
       const res = await axios.post(`${API_BASE}/auth/login`, data);
       console.log("login success →", res.data);          // 1. should print the JSON you posted
-      localStorage.setItem("token", res.data.token);      // 2. store the token
-      navigate("/dashboard");                             // 3. redirect
+      localStorage.setItem("token", res.data.token);
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 50);
     } catch (err: any) {
       console.error("login error →", err);
       setError(err.response?.data?.error || "Login failed");
