@@ -4,6 +4,7 @@ import { ArrowRight, Sparkles, Zap, Palette, Download, Upload, MessageSquare } f
 import { useNavigate } from "react-router-dom";
 import Button2 from "@/components/ui/Modern_button";
 import StartCreatingButton from "@/components/ui/Modern_button";
+import { LoginForm } from "@/components/login-form";
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -57,13 +58,13 @@ export default function LandingPage() {
           <Button
             variant="ghost"
             className="text-white hover:bg-white/10"
-            onClick={() => navigate("/login")}
+            onClick={() => document.getElementById('auth-section')?.scrollIntoView({ behavior: 'smooth' })}
           >
             Sign In
           </Button>
           <Button
             className="text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-            onClick={() => navigate("/login")}
+            onClick={() => document.getElementById('auth-section')?.scrollIntoView({ behavior: 'smooth' })}
           >
             Get Started
           </Button>
@@ -168,8 +169,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="px-6 py-20 text-center">
+      {/* Authentication Section */}
+      <section id="auth-section" className="px-6 py-20 text-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -182,14 +183,11 @@ export default function LandingPage() {
           <p className="text-xl text-gray-300 mb-8">
             Join thousands of creators who are already using ThumbnailAI to boost their views and engagement.
           </p>
-          <Button
-            size="lg"
-            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-lg px-10 py-6"
-            onClick={() => navigate("/login")}
-          >
-            Start Creating Now
-            <ArrowRight className="ml-2 w-5 h-5" />
-          </Button>
+          
+          {/* Login Form */}
+          <div className="flex justify-center">
+            <LoginForm />
+          </div>
         </motion.div>
       </section>
 

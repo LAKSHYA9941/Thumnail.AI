@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,7 +35,8 @@ import {
 } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import axios from "axios";
-import { CopyQueryCard } from "@/components/ui/copyquery";import { useToast } from "@/components/ui/toast";
+import { CopyQueryCard } from "@/components/ui/copyquery";
+import { useToast } from "@/components/ui/toast";
 
 interface Thumbnail {
   _id: string;
@@ -77,6 +79,7 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const { addToast } = useToast();
+  const navigate = useNavigate();
 
   const API_BASE = "https://thumnail-ai.onrender.com/api";
 
@@ -94,7 +97,7 @@ export default function Dashboard() {
       const token = localStorage.getItem("token");
       if (!token) {
         // No token found, redirect to login
-        window.location.href = "/";
+        navigate("/");
         return;
       }
 
@@ -108,7 +111,7 @@ export default function Dashboard() {
       // If token is invalid or expired, redirect to login
       if (error.response?.status === 401) {
         localStorage.removeItem("token");
-        window.location.href = "/";
+        navigate("/");
         return;
       }
       
@@ -134,7 +137,7 @@ export default function Dashboard() {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
-    window.location.href = "/";
+    navigate("/");
   };
 
   const handleImageUpload = (acceptedFiles: File[]) => {
