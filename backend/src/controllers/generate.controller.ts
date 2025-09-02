@@ -19,6 +19,11 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET!,
 });
 
+// Validate Cloudinary configuration
+if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+  console.error('❌ Cloudinary configuration missing. Please check your environment variables.');
+}
+
 /* --------------------------
    OpenRouter client
 --------------------------- */
@@ -26,6 +31,11 @@ const openai = new (await import("openai")).default({
   baseURL: "https://openrouter.ai/api/v1",
   apiKey: process.env.OPENROUTER_API_KEY,
 });
+
+// Validate OpenRouter configuration
+if (!process.env.OPENROUTER_API_KEY) {
+  console.error('❌ OpenRouter API key missing. Please check your environment variables.');
+}
 
 /* --------------------------
    1.  REWRITE PROMPT
@@ -35,6 +45,8 @@ export async function rewriteQuery(req: Request, res: Response) {
     const { prompt } = req.body;
     const uploadedFile = req.file; // Get the uploaded file from multer
     
+    console.log('Rewrite query called with:', { prompt, hasFile: !!uploadedFile });
+    
     if (!prompt) return res.status(400).json({ error: "Prompt required" });
 
     let originalImageUrl: string | undefined;
@@ -42,11 +54,13 @@ export async function rewriteQuery(req: Request, res: Response) {
     // If a file was uploaded, upload it to Cloudinary first
     if (uploadedFile) {
       try {
+        console.log('Uploading file to Cloudinary:', uploadedFile.filename);
         const uploadResult = await cloudinary.uploader.upload(uploadedFile.path, {
           folder: "reference-images",
           resource_type: "image",
         });
         originalImageUrl = uploadResult.secure_url;
+        console.log('File uploaded to Cloudinary:', originalImageUrl);
         
         // Clean up the temporary file
         fs.unlinkSync(uploadedFile.path);
@@ -94,7 +108,11 @@ export async function rewriteQuery(req: Request, res: Response) {
     res.json({ originalPrompt: prompt, rewrittenPrompt: rewritten });
   } catch (err) {
     console.error("Rewrite error:", err);
-    res.status(500).json({ error: "Failed to rewrite prompt" });
+    if (err instanceof Error) {
+      res.status(500).json({ error: err.message });
+    } else {
+      res.status(500).json({ error: "Failed to rewrite prompt" });
+    }
   }
 }
 
@@ -107,6 +125,8 @@ export async function generateImages(req: AuthRequest, res: Response) {
     const userId = req.user?.userId;
     const uploadedFile = req.file; // Get the uploaded file from multer
 
+    console.log('Generate images called with:', { prompt, queryRewrite, userId, hasFile: !!uploadedFile });
+
     if (!prompt) return res.status(400).json({ error: "Prompt is required" });
     if (!userId) return res.status(401).json({ error: "Not authenticated" });
 
@@ -116,11 +136,13 @@ export async function generateImages(req: AuthRequest, res: Response) {
     // If a file was uploaded, upload it to Cloudinary first
     if (uploadedFile) {
       try {
+        console.log('Uploading file to Cloudinary:', uploadedFile.filename);
         const uploadResult = await cloudinary.uploader.upload(uploadedFile.path, {
           folder: "reference-images",
           resource_type: "image",
         });
         originalImageUrl = uploadResult.secure_url;
+        console.log('File uploaded to Cloudinary:', originalImageUrl);
         
         // Clean up the temporary file
         fs.unlinkSync(uploadedFile.path);
@@ -199,7 +221,11 @@ export async function generateImages(req: AuthRequest, res: Response) {
     res.json({ urls });
   } catch (err: any) {
     console.error("Image gen error:", err.response?.data || err.message);
-    res.status(500).json({ error: "Image generation failed" });
+    if (err instanceof Error) {
+      res.status(500).json({ error: err.message });
+    } else {
+      res.status(500).json({ error: "Image generation failed" });
+    }
   }
 }
 
