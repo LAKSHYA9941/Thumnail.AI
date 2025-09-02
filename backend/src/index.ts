@@ -15,6 +15,10 @@ import fs from 'fs';
 dotenv.config();
 const app = express();
 
+// Get __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // ✅ Fix CORS - Allow methods, headers, handle preflight
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'https://thumnail-ai.vercel.app',
@@ -64,8 +68,6 @@ const upload = multer({
 app.locals.upload = upload;
 
 // Static file serving
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 app.use('/generated', express.static(path.join(__dirname, '../generated')));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
