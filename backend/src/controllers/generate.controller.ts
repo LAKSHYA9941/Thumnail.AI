@@ -74,6 +74,17 @@ export async function rewriteQuery(req: Request, res: Response) {
       }
     }
 
+    // Check if OpenRouter API key is available
+    if (!process.env.OPENROUTER_API_KEY) {
+      console.warn("⚠️ OpenRouter API key not found, using fallback enhancement");
+      const fallbackEnhanced = `Enhanced YouTube Thumbnail: ${prompt} - High quality, eye-catching design with bold text and vibrant colors`;
+      return res.json({ 
+        originalPrompt: prompt, 
+        rewrittenPrompt: fallbackEnhanced,
+        note: "Using fallback enhancement due to missing API configuration"
+      });
+    }
+
     const system = originalImageUrl
       ? "Enhance the prompt for a YouTube thumbnail. Use the uploaded image as reference."
       : "Enhance the prompt for a YouTube thumbnail.";
@@ -106,8 +117,18 @@ export async function rewriteQuery(req: Request, res: Response) {
     );
     const rewritten = data.choices[0]?.message?.content?.trim() || prompt;
     res.json({ originalPrompt: prompt, rewrittenPrompt: rewritten });
-  } catch (err) {
+  } catch (err: any) {
     console.error("Rewrite error:", err);
+    
+    // Check if it's an OpenRouter API error
+    if (err.response?.status === 401) {
+      console.error("❌ OpenRouter API key is invalid or expired");
+      return res.status(500).json({ 
+        error: "AI service authentication failed. Please check your API configuration.",
+        details: "The OpenRouter API key appears to be invalid or expired."
+      });
+    }
+    
     if (err instanceof Error) {
       res.status(500).json({ error: err.message });
     } else {
@@ -154,6 +175,15 @@ export async function generateImages(req: AuthRequest, res: Response) {
         }
         return res.status(500).json({ error: "Failed to upload reference image" });
       }
+    }
+
+    // Check if OpenRouter API key is available
+    if (!process.env.OPENROUTER_API_KEY) {
+      console.error("❌ OpenRouter API key is required for image generation");
+      return res.status(500).json({ 
+        error: "AI service configuration missing",
+        details: "OpenRouter API key is required for image generation. Please check your environment variables."
+      });
     }
 
     /* 1️⃣  Ask Gemini for image(s) */
@@ -205,7 +235,7 @@ export async function generateImages(req: AuthRequest, res: Response) {
         {
           folder: "thumbnails",
           resource_type: "image",
-          transformation: [{ width: 1280, height: 720, crop: "fill_pad" }],
+          transformation: [{ width: 1280, height: 720, crop: "fill" }],
         }
       );
       urls.push(uploadRes.secure_url);
@@ -221,6 +251,25 @@ export async function generateImages(req: AuthRequest, res: Response) {
     res.json({ urls });
   } catch (err: any) {
     console.error("Image gen error:", err.response?.data || err.message);
+    
+    // Check if it's an OpenRouter API error
+    if (err.response?.status === 401) {
+      console.error("❌ OpenRouter API key is invalid or expired");
+      return res.status(500).json({ 
+        error: "AI service authentication failed. Please check your API configuration.",
+        details: "The OpenRouter API key appears to be invalid or expired."
+      });
+    }
+    
+    // Check if it's a Cloudinary error
+    if (err.message && err.message.includes('c_fill_pad')) {
+      console.error("❌ Cloudinary transformation error:", err.message);
+      return res.status(500).json({ 
+        error: "Image processing failed",
+        details: "There was an issue processing the generated image."
+      });
+    }
+    
     if (err instanceof Error) {
       res.status(500).json({ error: err.message });
     } else {

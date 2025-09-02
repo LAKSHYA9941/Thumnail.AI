@@ -60,7 +60,12 @@ router.get("/generate/test", (req, res) => {
   res.json({ 
     message: "Generate routes working", 
     timestamp: new Date().toISOString(),
-    hasMulter: !!upload
+    hasMulter: !!upload,
+    env: {
+      hasCloudinary: !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET),
+      hasOpenRouter: !!process.env.OPENROUTER_API_KEY,
+      hasMongo: !!process.env.MONGO_URI
+    }
   });
 });
 
