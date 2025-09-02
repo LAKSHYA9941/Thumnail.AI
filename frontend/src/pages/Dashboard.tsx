@@ -159,9 +159,17 @@ export default function Dashboard() {
 
     setIsRewriting(true);
     try {
-      const response = await axios.post(`${API_BASE}/generate/rewrite-query`, {
-        prompt: prompt.trim(),
-        originalImage: uploadedImageUrl
+      // Create FormData to send both text and file
+      const formData = new FormData();
+      formData.append('prompt', prompt.trim());
+      if (uploadedImage) {
+        formData.append('referenceImage', uploadedImage);
+      }
+
+      const response = await axios.post(`${API_BASE}/generate/rewrite-query`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
       });
       setRewrittenPrompt(response.data.rewrittenPrompt);
       addToast('success', "Prompt enhanced successfully!");
@@ -195,12 +203,21 @@ export default function Dashboard() {
 
       const finalPrompt = rewrittenPrompt || prompt;
 
-      const response = await axios.post(`${API_BASE}/generate/images`, {
-        prompt: finalPrompt,
-        originalImageUrl: uploadedImageUrl,
-        queryRewrite: rewrittenPrompt
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
+      // Create FormData to send both text and file
+      const formData = new FormData();
+      formData.append('prompt', finalPrompt);
+      if (rewrittenPrompt) {
+        formData.append('queryRewrite', rewrittenPrompt);
+      }
+      if (uploadedImage) {
+        formData.append('referenceImage', uploadedImage);
+      }
+
+      const response = await axios.post(`${API_BASE}/generate/images`, formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
       });
 
       // Add assistant message with generated image

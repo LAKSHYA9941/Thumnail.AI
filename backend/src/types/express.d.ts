@@ -4,5 +4,6 @@ declare namespace Express {
       userId: string;
       email: string;
     };
+    file?: Express.Multer.File;
   }
 }

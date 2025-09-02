@@ -7,6 +7,8 @@ import axios from "axios";
 import { v2 as cloudinary } from "cloudinary";
 import { Thumbnail } from "../models/thumbnail.model.js";
 import { AuthRequest } from "../middlewares/singleUserAuth.js";
+import fs from "fs";
+import path from "path";
 
 /* --------------------------
    Cloudinary config
@@ -30,19 +32,53 @@ const openai = new (await import("openai")).default({
 --------------------------- */
 export async function rewriteQuery(req: Request, res: Response) {
   try {
-    const { prompt, originalImage } = req.body;
+    const { prompt } = req.body;
+    const uploadedFile = req.file; // Get the uploaded file from multer
+    
     if (!prompt) return res.status(400).json({ error: "Prompt required" });
 
-    const system = originalImage
+    let originalImageUrl: string | undefined;
+
+    // If a file was uploaded, upload it to Cloudinary first
+    if (uploadedFile) {
+      try {
+        const uploadResult = await cloudinary.uploader.upload(uploadedFile.path, {
+          folder: "reference-images",
+          resource_type: "image",
+        });
+        originalImageUrl = uploadResult.secure_url;
+        
+        // Clean up the temporary file
+        fs.unlinkSync(uploadedFile.path);
+      } catch (uploadError) {
+        console.error("Cloudinary upload error:", uploadError);
+        // Clean up the temporary file even if upload fails
+        if (fs.existsSync(uploadedFile.path)) {
+          fs.unlinkSync(uploadedFile.path);
+        }
+        return res.status(500).json({ error: "Failed to upload reference image" });
+      }
+    }
+
+    const system = originalImageUrl
       ? "Enhance the prompt for a YouTube thumbnail. Use the uploaded image as reference."
       : "Enhance the prompt for a YouTube thumbnail.";
+      
     const { data } = await axios.post(
       "https://openrouter.ai/api/v1/chat/completions",
       {
         model: "google/gemini-2.5-flash-image-preview:free",
         messages: [
           { role: "system", content: system },
-          { role: "user", content: `Rewrite: ${prompt}` },
+          {
+            role: "user", 
+            content: originalImageUrl 
+              ? [
+                  { type: "text", text: `Rewrite: ${prompt}` },
+                  { type: "image_url", image_url: { url: originalImageUrl } }
+                ]
+              : `Rewrite: ${prompt}`
+          },
         ],
         max_tokens: 200,
       },
@@ -67,13 +103,36 @@ export async function rewriteQuery(req: Request, res: Response) {
 ----------------------------------------------------------- */
 export async function generateImages(req: AuthRequest, res: Response) {
   try {
-    const { prompt, originalImageUrl, queryRewrite } = req.body;
+    const { prompt, queryRewrite } = req.body;
     const userId = req.user?.userId;
+    const uploadedFile = req.file; // Get the uploaded file from multer
 
     if (!prompt) return res.status(400).json({ error: "Prompt is required" });
     if (!userId) return res.status(401).json({ error: "Not authenticated" });
 
     const finalPrompt = queryRewrite || prompt;
+    let originalImageUrl: string | undefined;
+
+    // If a file was uploaded, upload it to Cloudinary first
+    if (uploadedFile) {
+      try {
+        const uploadResult = await cloudinary.uploader.upload(uploadedFile.path, {
+          folder: "reference-images",
+          resource_type: "image",
+        });
+        originalImageUrl = uploadResult.secure_url;
+        
+        // Clean up the temporary file
+        fs.unlinkSync(uploadedFile.path);
+      } catch (uploadError) {
+        console.error("Cloudinary upload error:", uploadError);
+        // Clean up the temporary file even if upload fails
+        if (fs.existsSync(uploadedFile.path)) {
+          fs.unlinkSync(uploadedFile.path);
+        }
+        return res.status(500).json({ error: "Failed to upload reference image" });
+      }
+    }
 
     /* 1️⃣  Ask Gemini for image(s) */
     const { data } = await axios.post(
