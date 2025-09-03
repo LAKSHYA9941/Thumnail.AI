@@ -44,9 +44,9 @@ export async function rewriteQuery(req: Request, res: Response) {
   try {
     const { prompt } = req.body;
     const uploadedFile = req.file; // Get the uploaded file from multer
-    
+
     console.log('Rewrite query called with:', { prompt, hasFile: !!uploadedFile });
-    
+
     if (!prompt) return res.status(400).json({ error: "Prompt required" });
 
     let originalImageUrl: string | undefined;
@@ -61,7 +61,7 @@ export async function rewriteQuery(req: Request, res: Response) {
         });
         originalImageUrl = uploadResult.secure_url;
         console.log('File uploaded to Cloudinary:', originalImageUrl);
-        
+
         // Clean up the temporary file
         fs.unlinkSync(uploadedFile.path);
       } catch (uploadError) {
@@ -78,8 +78,8 @@ export async function rewriteQuery(req: Request, res: Response) {
     if (!process.env.OPENROUTER_API_KEY) {
       console.warn("⚠️ OpenRouter API key not found, using fallback enhancement");
       const fallbackEnhanced = `Enhanced YouTube Thumbnail: ${prompt} - High quality, eye-catching design with bold text and vibrant colors`;
-      return res.json({ 
-        originalPrompt: prompt, 
+      return res.json({
+        originalPrompt: prompt,
         rewrittenPrompt: fallbackEnhanced,
         note: "Using fallback enhancement due to missing API configuration"
       });
@@ -88,7 +88,7 @@ export async function rewriteQuery(req: Request, res: Response) {
     const system = originalImageUrl
       ? "Enhance the prompt for a YouTube thumbnail. Use the uploaded image as reference."
       : "Enhance the prompt for a YouTube thumbnail.";
-      
+
     const { data } = await axios.post(
       "https://openrouter.ai/api/v1/chat/completions",
       {
@@ -96,12 +96,12 @@ export async function rewriteQuery(req: Request, res: Response) {
         messages: [
           { role: "system", content: system },
           {
-            role: "user", 
-            content: originalImageUrl 
+            role: "user",
+            content: originalImageUrl
               ? [
-                  { type: "text", text: `Rewrite: ${prompt}` },
-                  { type: "image_url", image_url: { url: originalImageUrl } }
-                ]
+                { type: "text", text: `Rewrite: ${prompt}` },
+                { type: "image_url", image_url: { url: originalImageUrl } }
+              ]
               : `Rewrite: ${prompt}`
           },
         ],
@@ -119,16 +119,16 @@ export async function rewriteQuery(req: Request, res: Response) {
     res.json({ originalPrompt: prompt, rewrittenPrompt: rewritten });
   } catch (err: any) {
     console.error("Rewrite error:", err);
-    
+
     // Check if it's an OpenRouter API error
     if (err.response?.status === 401) {
       console.error("❌ OpenRouter API key is invalid or expired");
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: "AI service authentication failed. Please check your API configuration.",
         details: "The OpenRouter API key appears to be invalid or expired."
       });
     }
-    
+
     if (err instanceof Error) {
       res.status(500).json({ error: err.message });
     } else {
@@ -164,7 +164,7 @@ export async function generateImages(req: AuthRequest, res: Response) {
         });
         originalImageUrl = uploadResult.secure_url;
         console.log('File uploaded to Cloudinary:', originalImageUrl);
-        
+
         // Clean up the temporary file
         fs.unlinkSync(uploadedFile.path);
       } catch (uploadError) {
@@ -180,7 +180,7 @@ export async function generateImages(req: AuthRequest, res: Response) {
     // Check if OpenRouter API key is available
     if (!process.env.OPENROUTER_API_KEY) {
       console.error("❌ OpenRouter API key is required for image generation");
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: "AI service configuration missing",
         details: "OpenRouter API key is required for image generation. Please check your environment variables."
       });
@@ -222,6 +222,7 @@ export async function generateImages(req: AuthRequest, res: Response) {
     if (!base64s.length) return res.status(500).json({ error: "No image received" });
 
     /* 3️⃣  Upload each to Cloudinary (resize on-the-fly) */
+    /* 3️⃣  Upload each to Cloudinary (perfect YT thumbnail with smart crop) */
     const urls: string[] = [];
     for (const src of base64s) {
       let buffer: Buffer;
@@ -231,14 +232,25 @@ export async function generateImages(req: AuthRequest, res: Response) {
         const { data: arrBuff } = await axios.get(src, { responseType: "arraybuffer" });
         buffer = Buffer.from(arrBuff);
       }
+
       const uploadRes = await cloudinary.uploader.upload(
         `data:image/png;base64,${buffer.toString("base64")}`,
         {
           folder: "thumbnails",
           resource_type: "image",
-          transformation: [{ width: 1280, height: 720, crop: "fit", background: "auto" }],
+          transformation: [
+            {
+              width: 1280,
+              height: 720,
+              crop: "fill",       // ensures full canvas is used
+              gravity: "auto",    // smart crop to keep main subject visible
+              quality: "auto",    // optimize quality automatically
+              fetch_format: "auto" // deliver in best format (webp, avif) if supported
+            },
+          ],
         }
       );
+
       urls.push(uploadRes.secure_url);
       await new Thumbnail({
         userId,
@@ -252,25 +264,25 @@ export async function generateImages(req: AuthRequest, res: Response) {
     res.json({ urls });
   } catch (err: any) {
     console.error("Image gen error:", err.response?.data || err.message);
-    
+
     // Check if it's an OpenRouter API error
     if (err.response?.status === 401) {
       console.error("❌ OpenRouter API key is invalid or expired");
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: "AI service authentication failed. Please check your API configuration.",
         details: "The OpenRouter API key appears to be invalid or expired."
       });
     }
-    
+
     // Check if it's a Cloudinary error
     if (err.message && err.message.includes('c_fill_pad')) {
       console.error("❌ Cloudinary transformation error:", err.message);
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: "Image processing failed",
         details: "There was an issue processing the generated image."
       });
     }
-    
+
     if (err instanceof Error) {
       res.status(500).json({ error: err.message });
     } else {
