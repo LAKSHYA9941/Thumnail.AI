@@ -242,10 +242,10 @@ export async function generateImages(req: AuthRequest, res: Response) {
             {
               width: 1280,
               height: 720,
-              crop: "fill",       // ensures full canvas is used
-              gravity: "auto",    // smart crop to keep main subject visible
-              quality: "auto",    // optimize quality automatically
-              fetch_format: "auto" // deliver in best format (webp, avif) if supported
+              crop: "pad",        // keep entire image inside, no cropping
+              background: "auto", // fill empty space with color matching edges
+              quality: "auto",
+              fetch_format: "auto"
             },
           ],
         }
