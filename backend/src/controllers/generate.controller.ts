@@ -203,6 +203,9 @@ Visual Style: Bold, modern, and professional designs that stand out in YouTubeâ€
 
 Quality: Always high resolution, crisp, and visually polished â€” indistinguishable from top-tier human designers.
 
+content: never hesitate to include imageinary people , different faces , portay the person in the provided image (if any) in various emotions, actions and position 
+for example: if someone provided an image of him/herself trying to pose like a gymrat you dont have to use the posture as it is provided mold it into something different but still related to users and show them the best version of themself that they can imagine . 
+
 Composition:
 
 Use strong focal points, dramatic contrasts, and clean layouts.
