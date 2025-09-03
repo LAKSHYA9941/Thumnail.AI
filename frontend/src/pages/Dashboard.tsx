@@ -107,14 +107,14 @@ export default function Dashboard() {
       setUser(response.data.user);
     } catch (error: any) {
       console.error("Failed to load user profile:", error);
-      
+
       // If token is invalid or expired, redirect to login
       if (error.response?.status === 401) {
         localStorage.removeItem("token");
         navigate("/");
         return;
       }
-      
+
       setError("Failed to load user profile");
     } finally {
       setIsLoading(false);
@@ -214,7 +214,7 @@ export default function Dashboard() {
       }
 
       const response = await axios.post(`${API_BASE}/generate/images`, formData, {
-        headers: { 
+        headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
         }
@@ -356,14 +356,10 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="chat" className="flex items-center space-x-2">
               <MessageSquare className="w-4 h-4" />
-              <span>Chat-to-genrate</span>
-            </TabsTrigger>
-            <TabsTrigger value="generate" className="flex items-center space-x-2">
-              <Wand2 className="w-4 h-4" />
-              <span>Generate</span>
+              <span>Chat & Generate</span>
             </TabsTrigger>
             <TabsTrigger value="gallery" className="flex items-center space-x-2">
               <ImageIcon className="w-4 h-4" />
@@ -377,12 +373,13 @@ export default function Dashboard() {
 
           {/* Chat Tab */}
           <TabsContent value="chat" className="space-y-6">
-            <Card className=" flex flex-col">
+            <Card className="flex flex-col h-[70vh]">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Bot className="w-5 h-5 text-purple-600" />
                   <span>AI Chat Assistant</span>
                 </CardTitle>
+                <p className="text-sm text-gray-500">Chat with AI to generate and improve your YouTube thumbnails</p>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col">
                 <ScrollArea className="flex-1 mb-4">
@@ -390,7 +387,8 @@ export default function Dashboard() {
                     {chatMessages.length === 0 && (
                       <div className="text-center py-8">
                         <Bot className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-500">Start a conversation to generate thumbnails!</p>
+                        <p className="text-gray-500 mb-2">Start a conversation to generate thumbnails!</p>
+                        <p className="text-sm text-gray-400">Upload a reference image and describe your ideal thumbnail</p>
                       </div>
                     )}
 
@@ -424,14 +422,16 @@ export default function Dashboard() {
                                         size="sm"
                                         variant="ghost"
                                         onClick={() => downloadImage(message.imageUrl!, message.prompt || 'thumbnail')}
+                                        className="text-xs"
                                       >
-                                        <Download className="w-3 h-3 mr-1 " />
+                                        <Download className="w-3 h-3 mr-1" />
                                         Download
                                       </Button>
                                       <Button
                                         size="sm"
                                         variant="ghost"
                                         onClick={() => copyToClipboard(message.prompt || '')}
+                                        className="text-xs"
                                       >
                                         <Copy className="w-3 h-3 mr-1" />
                                         Copy Prompt
@@ -466,14 +466,14 @@ export default function Dashboard() {
                   </div>
                 </ScrollArea>
 
-                <div className="space-y-3">
+                <div className="space-y-3 border-t pt-4">
                   {/* Image Upload */}
                   <div
                     {...getRootProps()}
                     className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${isDragActive
                       ? "border-purple-500 bg-purple-50"
                       : "border-gray-300 hover:border-purple-400"
-                      }`}
+                    }`}
                   >
                     <input {...getInputProps()} />
                     {uploadedImageUrl ? (
@@ -520,131 +520,49 @@ export default function Dashboard() {
                         }
                       }}
                     />
-                    <Button
-                      onClick={generateThumbnail}
-                      disabled={!prompt.trim() || isGenerating}
-                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                    >
-                      {isGenerating ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Send className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                    <div className="flex flex-col space-y-2">
+                      {/* Improve Query Button */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={rewriteQuery}
+                        disabled={!prompt.trim() || isRewriting}
+                        className="border-purple-300 text-purple-300 hover:bg-purple-300 hover:text-slate-900"
+                      >
+                        {isRewriting ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <MessageSquare className="w-4 h-4" />
+                        )}
+                        Improve Query
+                      </Button>
 
-          {/* Generate Tab */}
-          <TabsContent value="generate" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Sparkles className="w-5 h-5 text-purple-600" />
-                  <span>Generate New Thumbnail</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Image Upload */}
-                <div className="space-y-3">
-                  <Label>Reference Image (Optional)</Label>
-                  <div
-                    {...getRootProps()}
-                    className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${isDragActive
-                      ? "border-purple-500 bg-purple-50"
-                      : "border-gray-300 hover:border-purple-400"
-                      }`}
-                  >
-                    <input {...getInputProps()} />
-                    {uploadedImageUrl ? (
-                      <div className="space-y-3">
-                        <img
-                          src={uploadedImageUrl}
-                          alt="Uploaded reference"
-                          className="w-32 h-32 object-cover rounded-lg mx-auto"
-                        />
-                        <p className="text-sm text-gray-600">
-                          {uploadedImage?.name}
-                        </p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setUploadedImage(null);
-                            setUploadedImageUrl("");
-                          }}
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <Upload className="w-12 h-12 text-gray-400 mx-auto" />
-                        <p className="text-gray-600">
-                          {isDragActive
-                            ? "Drop the image here"
-                            : "Drag & drop an image, or click to select"}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Prompt Input */}
-                <div className="space-y-3">
-                  <Label htmlFor="prompt">Thumbnail Description</Label>
-                  <div className="flex space-x-2">
-                    <Input
-                      id="prompt"
-                      placeholder="Describe your ideal YouTube thumbnail..."
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                      className="flex-1"
-                    />
-                    <Button
-                      onClick={rewriteQuery}
-                      disabled={!prompt.trim() || isRewriting}
-                      variant="outline"
-                      className="whitespace-nowrap"
-                    >
-                      {isRewriting ? (
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <MessageSquare className="w-4 h-4" />
-                      )}
-                      <span className="ml-2">Rewrite</span>
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Rewritten Prompt */}
-                {rewrittenPrompt && (
-                  <div className="space-y-3">
-                    <Label>Enhanced Prompt</Label>
-                    <div className="p-4 bg-slate-900 border border-purple-200 rounded-lg">
-                      <p className="text-slate-300">{rewrittenPrompt}</p>
-                      <CopyQueryCard rewrittenQuery={rewrittenPrompt} />
+                      {/* Generate Thumbnail Button */}
+                      <Button
+                        onClick={generateThumbnail}
+                        disabled={!prompt.trim() || isGenerating}
+                        className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                      >
+                        {isGenerating ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Send className="w-4 h-4" />
+                        )}
+                      </Button>
                     </div>
                   </div>
-                )}
 
-                {/* Generate Button */}
-                <Button
-                  onClick={generateThumbnail}
-                  disabled={!prompt.trim() || isGenerating}
-                  className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                  size="lg"
-                >
-                  {isGenerating ? (
-                    <RefreshCw className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <Sparkles className="w-4 h-4 mr-2" />
+                  {/* Show Enhanced Prompt Card (after clicking "Improve Query") */}
+                  {rewrittenPrompt && (
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Enhanced Prompt</Label>
+                      <div className="p-4 bg-slate-900 border border-purple-200 rounded-lg">
+                        <p className="text-slate-300 text-sm">{rewrittenPrompt}</p>
+                        <CopyQueryCard rewrittenQuery={rewrittenPrompt} />
+                      </div>
+                    </div>
                   )}
-                  Generate Thumbnail
-                </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
