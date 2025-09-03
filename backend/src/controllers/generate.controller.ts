@@ -236,7 +236,7 @@ export async function generateImages(req: AuthRequest, res: Response) {
         {
           folder: "thumbnails",
           resource_type: "image",
-          transformation: [{ width: 1280, height: 720, crop: "fill" }],
+          transformation: [{ width: 1280, height: 720, crop: "pad", background: "auto" }],
         }
       );
       urls.push(uploadRes.secure_url);
