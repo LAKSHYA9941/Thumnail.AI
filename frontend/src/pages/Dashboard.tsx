@@ -2,11 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,15 +21,12 @@ import {
   LogOut,
   Plus,
   Image as ImageIcon,
-  Wand2,
   Send,
   Bot,
   User,
-  AlertCircle,
-  CheckCircle,
   Loader2,
   Copy,
-  Share2
+  
 } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import axios from "axios";
@@ -76,7 +71,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("chat");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [recentGenerated, setRecentGenerated] = useState<Array<{ imageUrl: string; prompt: string }>>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const { addToast } = useToast();
   const navigate = useNavigate();
@@ -86,11 +81,39 @@ export default function Dashboard() {
   useEffect(() => {
     loadUserProfile();
     loadThumbnails();
+    // Restore chat and recents from localStorage
+    try {
+      const savedMessages = localStorage.getItem("chatMessages");
+      if (savedMessages) {
+        const parsed: ChatMessage[] = JSON.parse(savedMessages).map((m: any) => ({
+          ...m,
+          timestamp: new Date(m.timestamp)
+        }));
+        setChatMessages(parsed);
+      }
+      const savedRecents = localStorage.getItem("recentGenerated");
+      if (savedRecents) {
+        setRecentGenerated(JSON.parse(savedRecents));
+      }
+    } catch {}
   }, []);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
+
+  // Persist chat and recent generated on change
+  useEffect(() => {
+    try {
+      localStorage.setItem("chatMessages", JSON.stringify(chatMessages));
+    } catch {}
+  }, [chatMessages]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("recentGenerated", JSON.stringify(recentGenerated));
+    } catch {}
+  }, [recentGenerated]);
 
   const loadUserProfile = async () => {
     try {
@@ -115,7 +138,8 @@ export default function Dashboard() {
         return;
       }
 
-      setError("Failed to load user profile");
+      // Keep UI simple; error toast optional
+      addToast('error', 'Failed to load user profile');
     } finally {
       setIsLoading(false);
     }
@@ -137,6 +161,8 @@ export default function Dashboard() {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("chatMessages");
+    localStorage.removeItem("recentGenerated");
     navigate("/");
   };
 
@@ -181,6 +207,13 @@ export default function Dashboard() {
     }
   };
 
+  const applyCompositionConstraints = (basePrompt: string) => {
+    const normalized = basePrompt.toLowerCase();
+    const hasSize = normalized.includes("1280") || normalized.includes("720") || normalized.includes("16:9");
+    const constraints = "YouTube thumbnail, 1280x720 (16:9). Center-focused composition. Avoid side color bands or empty margins. Ensure subject and text are centered and fill the frame edge-to-edge with clear focal point.";
+    return hasSize ? `${basePrompt}. Center-focused composition. Avoid side color bands or empty margins. Ensure subject and text are centered and fill the frame.` : `${basePrompt}. ${constraints}`;
+  };
+
   const generateThumbnail = async () => {
     if (!prompt.trim()) return;
 
@@ -201,7 +234,8 @@ export default function Dashboard() {
       const token = localStorage.getItem("token");
       if (!token) return;
 
-      const finalPrompt = rewrittenPrompt || prompt;
+      const basePrompt = rewrittenPrompt || prompt;
+      const finalPrompt = applyCompositionConstraints(basePrompt);
 
       // Create FormData to send both text and file
       const formData = new FormData();
@@ -232,6 +266,12 @@ export default function Dashboard() {
 
       setChatMessages(prev => [...prev, assistantMessage]);
 
+      // Update recent generated (keep last two)
+      setRecentGenerated(prev => {
+        const updated = [{ imageUrl: response.data.urls[0], prompt: finalPrompt }, ...prev];
+        return updated.slice(0, 2);
+      });
+
       // Reload thumbnails to show the new one
       await loadThumbnails();
 
@@ -260,14 +300,28 @@ export default function Dashboard() {
     }
   };
 
-  const downloadImage = (imageUrl: string, prompt: string) => {
-    const link = document.createElement("a");
-    link.href = imageUrl.startsWith('http') ? imageUrl : `${imageUrl}`;
-    link.download = `thumbnail_${prompt.slice(0, 20)}_${Date.now()}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    addToast('success', "Image downloaded successfully!");
+  const downloadImage = async (imageUrl: string, prompt: string) => {
+    try {
+      const res = await fetch(imageUrl, { mode: 'cors' });
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `thumbnail_${prompt.slice(0, 30).replace(/[^a-z0-9_-]/gi, '_')}_${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      addToast('success', "Image downloaded successfully!");
+    } catch (e) {
+      // Fallback
+      const link = document.createElement("a");
+      link.href = imageUrl;
+      link.download = `thumbnail_${prompt.slice(0, 20)}_${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   const deleteThumbnail = async (thumbnailId: string) => {
@@ -293,15 +347,7 @@ export default function Dashboard() {
     addToast('success', "Copied to clipboard!");
   };
 
-  const SkeletonCard = () => (
-    <div className="animate-pulse">
-      <div className="bg-gray-200 rounded-lg h-48 mb-4"></div>
-      <div className="space-y-2">
-        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-      </div>
-    </div>
-  );
+  // Reserved for future loading states
 
 
   if (isLoading) {
@@ -382,6 +428,29 @@ export default function Dashboard() {
                 <p className="text-sm text-gray-500">Chat with AI to generate and improve your YouTube thumbnails</p>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col">
+                {/* Recent two generated thumbnails */}
+                {recentGenerated.length > 0 && (
+                  <div className="mb-4">
+                    <Label className="text-xs text-gray-400">Recent results</Label>
+                    <div className="mt-2 grid grid-cols-2 gap-3">
+                      {recentGenerated.map((item, idx) => (
+                        <div key={`${item.imageUrl}-${idx}`} className="border rounded-lg overflow-hidden bg-gray-900">
+                          <img src={item.imageUrl} alt="Recent thumbnail" className="w-full h-32 object-cover" />
+                          <div className="p-2 flex items-center justify-between">
+                            <Button size="sm" variant="secondary" onClick={() => downloadImage(item.imageUrl, item.prompt)}>
+                              <Download className="w-3 h-3 mr-1" />
+                              Download
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => setPrompt(item.prompt)}>
+                              <Copy className="w-3 h-3 mr-1" />
+                              Use prompt
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <ScrollArea className="flex-1 mb-4">
                   <div className="space-y-4">
                     {chatMessages.length === 0 && (
