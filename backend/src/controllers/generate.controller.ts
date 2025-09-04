@@ -9,6 +9,7 @@ import { Thumbnail } from "../models/thumbnail.model.js";
 import { AuthRequest } from "../middlewares/singleUserAuth.js";
 import fs from "fs";
 import path from "path";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 /* --------------------------
    Cloudinary config
@@ -25,16 +26,27 @@ if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !pr
 }
 
 /* --------------------------
-   OpenRouter client
+   OpenRouter client (for query rewriting only)
 --------------------------- */
 const openai = new (await import("openai")).default({
   baseURL: "https://openrouter.ai/api/v1",
   apiKey: process.env.OPENROUTER_API_KEY,
 });
 
-// Validate OpenRouter configuration
+/* --------------------------
+   Google Gemini client (for image generation)
+--------------------------- */
+let genAI: GoogleGenerativeAI | null = null;
+if (process.env.GEMINI_API_KEY) {
+  genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+}
+
+// Validate API configurations
 if (!process.env.OPENROUTER_API_KEY) {
-  console.error('❌ OpenRouter API key missing. Please check your environment variables.');
+  console.warn('⚠️ OpenRouter API key missing. Query rewriting will use fallback.');
+}
+if (!process.env.GEMINI_API_KEY) {
+  console.error('❌ Gemini API key missing. Please check your environment variables.');
 }
 
 /* --------------------------
@@ -188,68 +200,84 @@ export async function generateImages(req: AuthRequest, res: Response) {
       }
     }
 
-    // Check if OpenRouter API key is available
-    if (!process.env.OPENROUTER_API_KEY) {
-      console.error("❌ OpenRouter API key is required for image generation");
+    // Check if Gemini API key is available
+    if (!process.env.GEMINI_API_KEY || !genAI) {
+      console.error("❌ Gemini API key is required for image generation");
       return res.status(500).json({
         error: "AI service configuration missing",
-        details: "OpenRouter API key is required for image generation. Please check your environment variables."
+        details: "Gemini API key is required for image generation. Please check your environment variables."
       });
     }
 
-    /* 1️⃣  Ask Gemini for image(s) */
-    const { data } = await axios.post(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
-        model: "google/gemini-2.5-flash-image-preview",
-        messages: [
-          {
-            role: "user",
-            system:
-`You are an expert of making youtube thumbnails. Focus on clear, impactful imagery and strong visual. Consider the following when generating
-Catchy: it should grab attention quickly
-Relevance: Does it accurately represent the video content?
-Text: best in class title for the video it should be legible, short, and punchy (Max 5-7 words)
-text used should be 3d Glowing, sparkly making an impact at the audience.
-Composition: Use the best techniques there are for composition.
-Color: Contrasting vibrant colors like it should set up the vibe of the video idea.
-Emotion/Intrigue: it should evoke curiosity or a strong emotion
+    /* 1️⃣  Generate image using Google Gemini API */
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+    
+    const systemPrompt = `You are an expert at making YouTube thumbnails. Focus on clear, impactful imagery and strong visuals. Consider the following when generating:
+- Catchy: it should grab attention quickly
+- Relevance: Does it accurately represent the video content?
+- Text: best in class title for the video it should be legible, short, and punchy (Max 5-7 words)
+- Text used should be 3D Glowing, sparkly making an impact at the audience
+- Composition: Use the best techniques there are for composition
+- Color: Contrasting vibrant colors like it should set up the vibe of the video idea
+- Emotion/Intrigue: it should evoke curiosity or a strong emotion
+
 Cropping Instructions:
 All generated images must be cropped to a strict 16:9 aspect ratio, suitable for YouTube thumbnails. The resolution should be at least 1280x720 pixels
-When you're describing the thumbnail you want, imagine these instructions are always active in the background.
-REQUIREMENTS:
-Generate exactly 1280x720 pixels (16:9 ratio)
-NEVER crop elements - fit everything within canvas
-2-3 main elements maximum
-Leave space in bottom-right for duration overlay
-Exaggerate on every element to make it look more impactfull.
-ALWAYS USE THE REFERENCE IMAGE IF IT IS PROVIDED AND ENHANCE SO THAT THE USER GET THE BEST VERSION OF HIM/HERSELF
-`,
-            content: [
-              { type: "text", text: finalPrompt },
-              ...(originalImageUrl
-                ? [{ type: "image_url", image_url: { url: originalImageUrl } }]
-                : []),
-            ],
-          },
-        ],
-        modalities: ["image", "text"],
-        max_tokens: 4096,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          "HTTP-Referer": "https://thumnail-ai.vercel.app",
-          "X-Title": "ThumbnailAI",
-        },
-      }
-    );
 
-    /* 2️⃣  Extract image(s) */
-    const images = data.choices[0]?.message?.images || [];
-    const base64Regex = /data:image\/(png|jpeg|jpg);base64,([^"\s]+)/gi;
-    const base64s = [...(data.choices[0]?.message?.content?.match(base64Regex) || []), ...images.map((i: any) => i.image_url?.url)];
-    if (!base64s.length) return res.status(500).json({ error: "No image received" });
+REQUIREMENTS:
+- Generate exactly 1280x720 pixels (16:9 ratio)
+- NEVER crop elements - fit everything within canvas
+- 2-3 main elements maximum
+- Leave space in bottom-right for duration overlay
+- Exaggerate on every element to make it look more impactful
+- ALWAYS USE THE REFERENCE IMAGE IF IT IS PROVIDED AND ENHANCE SO THAT THE USER GET THE BEST VERSION OF HIM/HERSELF`;
+
+    let parts: any[] = [
+      { text: `${systemPrompt}\n\nGenerate a YouTube thumbnail for: ${finalPrompt}` }
+    ];
+
+    // Add reference image if provided
+    if (originalImageUrl) {
+      try {
+        const imageResponse = await axios.get(originalImageUrl, { responseType: 'arraybuffer' });
+        const imageBuffer = Buffer.from(imageResponse.data);
+        const mimeType = imageResponse.headers['content-type'] || 'image/jpeg';
+        
+        parts.push({
+          inlineData: {
+            data: imageBuffer.toString('base64'),
+            mimeType: mimeType
+          }
+        });
+      } catch (imageError) {
+        console.warn('Failed to fetch reference image:', imageError);
+      }
+    }
+
+    const result = await model.generateContent(parts);
+    const response = await result.response;
+    
+    // Extract generated images from the response
+    const candidates = response.candidates;
+    if (!candidates || candidates.length === 0) {
+      return res.status(500).json({ error: "No image generated" });
+    }
+
+    const base64s: string[] = [];
+    for (const candidate of candidates) {
+      if (candidate.content && candidate.content.parts) {
+        for (const part of candidate.content.parts) {
+          if (part.inlineData && part.inlineData.data) {
+            const mimeType = part.inlineData.mimeType || 'image/png';
+            base64s.push(`data:${mimeType};base64,${part.inlineData.data}`);
+          }
+        }
+      }
+    }
+
+    if (!base64s.length) {
+      return res.status(500).json({ error: "No image data received from Gemini" });
+    }
 
     /* 3️⃣  Upload each to Cloudinary (resize on-the-fly) */
     /* 3️⃣  Upload each to Cloudinary (perfect YT thumbnail with smart crop) */
@@ -295,20 +323,20 @@ ALWAYS USE THE REFERENCE IMAGE IF IT IS PROVIDED AND ENHANCE SO THAT THE USER GE
   } catch (err: any) {
     console.error("Image gen error:", err.response?.data || err.message);
 
-    // Check if it's an OpenRouter API error
-    if (err.response?.status === 401) {
-      console.error("❌ OpenRouter API key is invalid or expired");
+    // Check if it's a Gemini API error
+    if (err.message && err.message.includes('API_KEY')) {
+      console.error("❌ Gemini API key is invalid or expired");
       return res.status(500).json({
         error: "AI service authentication failed. Please check your API configuration.",
-        details: "The OpenRouter API key appears to be invalid or expired."
+        details: "The Gemini API key appears to be invalid or expired."
       });
     }
 
-    if (err.response?.status === 404) {
-      console.error("❌ Model not found or unavailable for image generation");
+    if (err.message && err.message.includes('QUOTA_EXCEEDED')) {
+      console.error("❌ Gemini API quota exceeded");
       return res.status(500).json({
-        error: "AI model unavailable",
-        details: "The image generation model is currently unavailable. Please try again later or contact support."
+        error: "AI service quota exceeded",
+        details: "The Gemini API quota has been exceeded. Please try again later or check your billing."
       });
     }
 
