@@ -281,28 +281,14 @@ export default function Dashboard() {
     }
   };
 
-  const downloadImage = async (imageUrl: string, prompt: string) => {
-    try {
-      const res = await fetch(imageUrl, { mode: 'cors' });
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `thumbnail_${prompt.slice(0, 30).replace(/[^a-z0-9_-]/gi, '_')}_${Date.now()}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      addToast('success', "Image downloaded successfully!");
-    } catch (e) {
-      // Fallback
-    const link = document.createElement("a");
-      link.href = imageUrl;
-    link.download = `thumbnail_${prompt.slice(0, 20)}_${Date.now()}.png`;
+  const downloadImage = (imageUrl: string, prompt: string) => {
+    const link = document.createElement('a');
+    link.href = imageUrl;
+    link.download = `thumbnail_${prompt.slice(0, 30).replace(/[^a-z0-9_-]/gi, '_')}_${Date.now()}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    }
+    addToast('success', 'Image download triggered');
   };
 
   const deleteThumbnail = async (thumbnailId: string) => {
