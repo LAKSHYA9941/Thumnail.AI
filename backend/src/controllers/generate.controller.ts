@@ -98,13 +98,13 @@ export async function rewriteQuery(req: Request, res: Response) {
     }
 
     const system = originalImageUrl
-      ? "Enhance the prompt for a YouTube thumbnail. Use the uploaded image as reference."
-      : "Enhance the prompt for a YouTube thumbnail.";
+      ? "Enhance the prompt for a YouTube thumbnail so that other AI could understand it. Use the uploaded image as reference."
+      : "Enhance the prompt for a YouTube thumbnail so that other AI could understand it";
 
     const { data } = await axios.post(
       "https://openrouter.ai/api/v1/chat/completions",
       {
-        model: "google/gemini-2.5-flash-image-preview",
+        model: "qwen/qwen-2.5-72b-instruct:free",
         messages: [
           { role: "system", content: system },
           {
@@ -130,33 +130,8 @@ export async function rewriteQuery(req: Request, res: Response) {
     const rewritten = data.choices[0]?.message?.content?.trim() || prompt;
     res.json({ originalPrompt: prompt, rewrittenPrompt: rewritten });
   } catch (err: any) {
-    console.error("Rewrite error:", err);
+    console.error("Rewrite error:", err.response?.data || err.message || err);
 
-    // Check if it's an OpenRouter API error
-    if (err.response?.status === 401) {
-      console.error("❌ OpenRouter API key is invalid or expired");
-      return res.status(500).json({
-        error: "AI service authentication failed. Please check your API configuration.",
-        details: "The OpenRouter API key appears to be invalid or expired."
-      });
-    }
-
-    if (err.response?.status === 404) {
-      console.error("❌ Model not found or unavailable");
-      // Fallback to basic prompt enhancement
-      const fallbackEnhanced = `Enhanced YouTube Thumbnail: ${prompt} - High quality, eye-catching design with bold text and vibrant colors`;
-      return res.json({
-        originalPrompt: prompt,
-        rewrittenPrompt: fallbackEnhanced,
-        note: "Using fallback enhancement due to model unavailability"
-      });
-    }
-
-    if (err instanceof Error) {
-      res.status(500).json({ error: err.message });
-    } else {
-      res.status(500).json({ error: "Failed to rewrite prompt" });
-    }
   }
 }
 
@@ -210,25 +185,27 @@ export async function generateImages(req: AuthRequest, res: Response) {
     }
 
     /* 1️⃣  Generate image using Google Gemini API */
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-    
+    const model = genAI.getGenerativeModel({ model: "google/gemini-2.5-flash-image-preview" });
+
     const systemPrompt = `You are an expert at making YouTube thumbnails. Focus on clear, impactful imagery and strong visuals. Consider the following when generating:
 - Catchy: it should grab attention quickly
-- Relevance: Does it accurately represent the video content?
-- Text: best in class title for the video it should be legible, short, and punchy (Max 5-7 words)
-- Text used should be 3D Glowing, sparkly making an impact at the audience
+- Relevance: it should accurately represent the video content
+- Text: best in class title for the video it should be legible, short, and punchy (Max 3-4 words)
+- Text used should be 3D Glowing, sparkly making an impact at the audience colors related to the theme
 - Composition: Use the best techniques there are for composition
 - Color: Contrasting vibrant colors like it should set up the vibe of the video idea
 - Emotion/Intrigue: it should evoke curiosity or a strong emotion
 
 Cropping Instructions:
-All generated images must be cropped to a strict 16:9 aspect ratio, suitable for YouTube thumbnails. The resolution should be at least 1280x720 pixels
+All generated images must be cropped to a strict 16:9 aspect ratio, suitable for YouTube thumbnails. The resolution should be at least 1280x720 pixels and content should be within the canvas no content itme should be out of the frame and no blurriness.
 
 REQUIREMENTS:
 - Generate exactly 1280x720 pixels (16:9 ratio)
 - NEVER crop elements - fit everything within canvas
 - 2-3 main elements maximum
 - Leave space in bottom-right for duration overlay
+- Use bold, large text (max 3-4 words)
+- the Frame should be filled with content props anything but it should look contentfull.
 - Exaggerate on every element to make it look more impactful
 - ALWAYS USE THE REFERENCE IMAGE IF IT IS PROVIDED AND ENHANCE SO THAT THE USER GET THE BEST VERSION OF HIM/HERSELF`;
 
@@ -242,7 +219,7 @@ REQUIREMENTS:
         const imageResponse = await axios.get(originalImageUrl, { responseType: 'arraybuffer' });
         const imageBuffer = Buffer.from(imageResponse.data);
         const mimeType = imageResponse.headers['content-type'] || 'image/jpeg';
-        
+
         parts.push({
           inlineData: {
             data: imageBuffer.toString('base64'),
@@ -256,7 +233,7 @@ REQUIREMENTS:
 
     const result = await model.generateContent(parts);
     const response = await result.response;
-    
+
     // Extract generated images from the response
     const candidates = response.candidates;
     if (!candidates || candidates.length === 0) {
