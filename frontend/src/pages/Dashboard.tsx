@@ -373,7 +373,7 @@ export default function Dashboard() {
 
           {/* Chat Tab */}
           <TabsContent value="chat" className="space-y-6">
-            <Card className="flex flex-col h-[70vh]">
+            <Card className="flex flex-col">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Bot className="w-5 h-5 text-purple-600" />
