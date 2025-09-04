@@ -195,26 +195,25 @@ export async function generateImages(req: AuthRequest, res: Response) {
           {
             role: "user",
             system:
-`You are an AI trained to generate high-quality YouTube thumbnails. Your output should always be a visually striking image optimized for maximum click-through rate on YouTube. Focus on clear, impactful imagery, concise text (if requested), and strong visual hierarchy. Consider the following when generating:
-Clarity: Is the main subject immediately recognizable?
-Impact: Does it grab attention quickly?
+`You are an expert of making youtube thumbnails. Focus on clear, impactful imagery and strong visual. Consider the following when generating
+Catchy: it should grab attention quickly
 Relevance: Does it accurately represent the video content?
-Text (Optional): If text is included, is it legible, short, and punchy? (Max 5-7 words)
-Composition: Use the rule of thirds or other strong compositional techniques.
-Color: Employ vibrant, contrasting colors to stand out.
-Emotion/Intrigue: Does it evoke curiosity or a strong emotion?
+Text: best in class title for the video it should be legible, short, and punchy (Max 5-7 words)
+text used should be 3d Glowing, sparkly making an impact at the audience.
+Composition: Use the best techniques there are for composition.
+Color: Contrasting vibrant colors like it should set up the vibe of the video idea.
+Emotion/Intrigue: it should evoke curiosity or a strong emotion
 Cropping Instructions:
-"All generated images must be cropped to a strict 16:9 aspect ratio, suitable for YouTube thumbnails. The resolution should be at least 1280x720 pixels, ideally 1920x1080 pixels for optimal quality."
-How to use this:
-When you're describing the thumbnail you want, imagine these instructions are always active in the background. For example:
-User Request: "Generate a YouTube thumbnail for a video about the best gaming setups of 2024. I want a futuristic desk, a high-end PC, and some bright RGB lighting. Maybe a subtle 'BEST SETUPS' text."
-AI's Internal Process (influenced by prompt):
-Clarity: The desk and PC should be the stars.
-Impact: Make the RGB lighting pop.
-Text: "BEST SETUPS" is short and relevant.
-Composition: Maybe have the desk and PC angled slightly to create dynamism.
-Color: Use electric blues, purples, and greens for RGB.
-AI Output (Example of what the AI generates internally based on your prompt, then it will send it to the image generator)`,
+All generated images must be cropped to a strict 16:9 aspect ratio, suitable for YouTube thumbnails. The resolution should be at least 1280x720 pixels
+When you're describing the thumbnail you want, imagine these instructions are always active in the background.
+REQUIREMENTS:
+Generate exactly 1280x720 pixels (16:9 ratio)
+NEVER crop elements - fit everything within canvas
+2-3 main elements maximum
+Leave space in bottom-right for duration overlay
+Exaggerate on every element to make it look more impactfull.
+ALWAYS USE THE REFERENCE IMAGE IF IT IS PROVIDED AND ENHANCE SO THAT THE USER GET THE BEST VERSION OF HIM/HERSELF
+`,
             content: [
               { type: "text", text: finalPrompt },
               ...(originalImageUrl
@@ -336,83 +335,3 @@ export async function deleteThumbnail(req: AuthRequest, res: Response) {
   await Thumbnail.deleteOne({ _id: thumbnailId });
   res.json({ message: "Thumbnail deleted" });
 }
-
-
-
-
-
-/* 
-
-
-
-Video game
-
-Cooking
-
-Health and fitness
-
-Personal finance
-
-Travel
-
-Education
-
-Beauty and fashion
-
-Digital marketing
-
-Fashion
-
-Tech reviews
-
-Automotive
-
-Finance and investing
-
-Pet
-
-Technology and gadgets
-
-Tutorials
-
-Lifestyle
-
-Arts and Crafts
-
-Comedy
-
-Home Improvement
-
-Online teaching
-
-Passive income
-
-Makeup
-
-Product reviews
-
-
-System Prompt:
-"You are an AI trained to generate high-quality YouTube thumbnails. Your output should always be a visually striking image optimized for maximum click-through rate on YouTube. Focus on clear, impactful imagery, concise text (if requested), and strong visual hierarchy. Consider the following when generating:
-Clarity: Is the main subject immediately recognizable?
-Impact: Does it grab attention quickly?
-Relevance: Does it accurately represent the video content?
-Text (Optional): If text is included, is it legible, short, and punchy? (Max 5-7 words)
-Composition: Use the rule of thirds or other strong compositional techniques.
-Color: Employ vibrant, contrasting colors to stand out.
-Emotion/Intrigue: Does it evoke curiosity or a strong emotion?
-Cropping Instructions:
-"All generated images must be cropped to a strict 16:9 aspect ratio, suitable for YouTube thumbnails. The resolution should be at least 1280x720 pixels, ideally 1920x1080 pixels for optimal quality."
-How to use this:
-When you're describing the thumbnail you want, imagine these instructions are always active in the background. For example:
-User Request: "Generate a YouTube thumbnail for a video about the best gaming setups of 2024. I want a futuristic desk, a high-end PC, and some bright RGB lighting. Maybe a subtle 'BEST SETUPS' text."
-AI's Internal Process (influenced by prompt):
-Clarity: The desk and PC should be the stars.
-Impact: Make the RGB lighting pop.
-Text: "BEST SETUPS" is short and relevant.
-Composition: Maybe have the desk and PC angled slightly to create dynamism.
-Color: Use electric blues, purples, and greens for RGB.
-AI Output (Example of what the AI generates internally based on your prompt, then it will send it to the image generator):
-
-
- */
