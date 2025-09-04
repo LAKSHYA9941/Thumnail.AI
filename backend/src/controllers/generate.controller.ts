@@ -92,7 +92,7 @@ export async function rewriteQuery(req: Request, res: Response) {
     const { data } = await axios.post(
       "https://openrouter.ai/api/v1/chat/completions",
       {
-        model: "google/gemini-2.5-flash-image-preview:free",
+        model: "google/gemini-2.5-flash-image-preview",
         messages: [
           { role: "system", content: system },
           {
@@ -126,6 +126,17 @@ export async function rewriteQuery(req: Request, res: Response) {
       return res.status(500).json({
         error: "AI service authentication failed. Please check your API configuration.",
         details: "The OpenRouter API key appears to be invalid or expired."
+      });
+    }
+
+    if (err.response?.status === 404) {
+      console.error("❌ Model not found or unavailable");
+      // Fallback to basic prompt enhancement
+      const fallbackEnhanced = `Enhanced YouTube Thumbnail: ${prompt} - High quality, eye-catching design with bold text and vibrant colors`;
+      return res.json({
+        originalPrompt: prompt,
+        rewrittenPrompt: fallbackEnhanced,
+        note: "Using fallback enhancement due to model unavailability"
       });
     }
 
@@ -190,7 +201,7 @@ export async function generateImages(req: AuthRequest, res: Response) {
     const { data } = await axios.post(
       "https://openrouter.ai/api/v1/chat/completions",
       {
-        model: "google/gemini-2.5-flash-image-preview:free",
+        model: "google/gemini-2.5-flash-image-preview",
         messages: [
           {
             role: "user",
@@ -290,6 +301,14 @@ ALWAYS USE THE REFERENCE IMAGE IF IT IS PROVIDED AND ENHANCE SO THAT THE USER GE
       return res.status(500).json({
         error: "AI service authentication failed. Please check your API configuration.",
         details: "The OpenRouter API key appears to be invalid or expired."
+      });
+    }
+
+    if (err.response?.status === 404) {
+      console.error("❌ Model not found or unavailable for image generation");
+      return res.status(500).json({
+        error: "AI model unavailable",
+        details: "The image generation model is currently unavailable. Please try again later or contact support."
       });
     }
 
