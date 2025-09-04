@@ -118,7 +118,7 @@ export default function ChatSection(props: Props) {
                       {message.type === 'assistant' && <Bot className="w-4 h-4 mt-1 flex-shrink-0" />}
                       <div className="flex-1">
                         <p className="text-sm">{message.content}</p>
-                        {message.imageUrl && (
+                        {message.imageUrl && !message.imageUrl.startsWith('blob:') && (
                           <div className="mt-3">
                             <img
                               src={message.imageUrl}

@@ -64,6 +64,8 @@ export default function Dashboard() {
       if (savedMessages) {
         const parsed: ChatMessage[] = JSON.parse(savedMessages).map((m: any) => ({
           ...m,
+          // Drop any persisted blob URLs to avoid broken images
+          imageUrl: m.imageUrl && typeof m.imageUrl === 'string' && m.imageUrl.startsWith('blob:') ? undefined : m.imageUrl,
           timestamp: new Date(m.timestamp)
         }));
         setChatMessages(parsed);
@@ -82,7 +84,13 @@ export default function Dashboard() {
   // Persist chat and recent generated on change
   useEffect(() => {
     try {
-      localStorage.setItem("chatMessages", JSON.stringify(chatMessages));
+      // Avoid persisting blob URLs which will break after reload
+      const sanitized = chatMessages.map((m) => (
+        m.imageUrl && m.imageUrl.startsWith('blob:')
+          ? { ...m, imageUrl: undefined }
+          : m
+      ));
+      localStorage.setItem("chatMessages", JSON.stringify(sanitized));
     } catch {}
   }, [chatMessages]);
 
@@ -205,7 +213,8 @@ export default function Dashboard() {
       type: 'user',
       content: prompt,
       timestamp: new Date(),
-      imageUrl: uploadedImageUrl || undefined
+      // Do not attach blob preview to message to avoid stale blob URLs after reload
+      imageUrl: undefined
     };
 
     setChatMessages(prev => [...prev, userMessage]);
