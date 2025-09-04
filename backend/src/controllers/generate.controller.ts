@@ -97,25 +97,18 @@ export async function rewriteQuery(req: Request, res: Response) {
       });
     }
 
-    const system = originalImageUrl
-      ? "Enhance the prompt for a YouTube thumbnail so that other AI could understand it. Use the uploaded image as reference."
-      : "Enhance the prompt for a YouTube thumbnail so that other AI could understand it";
+    const userContent = originalImageUrl
+      ? `Rewrite: ${prompt}\n\n(The user has uploaded a reference image; please enhance the prompt so it reflects the style, subject, and mood of that image.)`
+      : `Rewrite: ${prompt}`;
 
     const { data } = await axios.post(
       "https://openrouter.ai/api/v1/chat/completions",
       {
         model: "qwen/qwen-2.5-72b-instruct:free",
+        temperature: 1,
         messages: [
-          { role: "system", content: system },
-          {
-            role: "user",
-            content: originalImageUrl
-              ? [
-                { type: "text", text: `Rewrite: ${prompt}` },
-                { type: "image_url", image_url: { url: originalImageUrl } }
-              ]
-              : `Rewrite: ${prompt}`
-          },
+          { role: "system", content: "you are a prompt engineer that helps to create the best possible prompts for text to image AI models so that user can get the best possible results for their youtube video. Use the techniques of modern thumbnail makers." },
+          { role: "user", content: userContent },
         ],
         max_tokens: 200,
       },
@@ -185,7 +178,7 @@ export async function generateImages(req: AuthRequest, res: Response) {
     }
 
     /* 1️⃣  Generate image using Google Gemini API */
-    const model = genAI.getGenerativeModel({ model: "google/gemini-2.5-flash-image-preview" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-image-preview" });
 
     const systemPrompt = `You are an expert at making YouTube thumbnails. Focus on clear, impactful imagery and strong visuals. Consider the following when generating:
 - Catchy: it should grab attention quickly
