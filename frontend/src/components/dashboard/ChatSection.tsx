@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Upload, MessageSquare, Loader2, Send, Bot, User, Download, Copy } from "lucide-react";
 import { CopyQueryCard } from "@/components/ui/copyquery";
+import VoiceAgentButton from "@/components/voice/VoiceAgentButton";
 
 type ChatMessage = {
   id: string;
@@ -195,6 +196,11 @@ export default function ChatSection(props: Props) {
               }}
             />
             <div className="flex flex-col space-y-2">
+              <VoiceAgentButton
+                onPromptGenerated={setPrompt}
+                apiKey={import.meta.env.VITE_OPENAI_API_KEY || ''}
+                disabled={isGenerating || isRewriting}
+              />
               <Button size="sm" variant="outline" onClick={onRewriteQuery} disabled={!prompt.trim() || isRewriting} className="border-purple-300 text-purple-300 hover:bg-purple-300 hover:text-slate-900">
                 {isRewriting ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
                 Improve Query
