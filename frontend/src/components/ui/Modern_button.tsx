@@ -11,7 +11,7 @@ const StartCreatingButton = () => {
     <StyledWrapper>
       <button
         className="animated-button"
-        onClick={() => navigate("/login")}
+        onClick={() => document.getElementById('auth-section')?.scrollIntoView({ behavior: 'smooth' })}
       >
         {/* left arrow */}
         <svg viewBox="0 0 24 24" className="arr-2">

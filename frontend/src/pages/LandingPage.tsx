@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles, Zap, Palette, Download, Upload, MessageSquare } from "lucide-react";
+import { Sparkles, Zap, Palette, Download, Upload, MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Button2 from "@/components/ui/Modern_button";
 import StartCreatingButton from "@/components/ui/Modern_button";
@@ -40,7 +40,8 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 
+    via-pink-700 to-purple-900 ">
       {/* Navigation */}
       <nav className="flex items-center justify-between p-6 max-w-7xl mx-auto">
         <motion.div
@@ -48,20 +49,13 @@ export default function LandingPage() {
           animate={{ opacity: 1, x: 0 }}
           className="flex items-center space-x-2"
         >
-          <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
             <Zap className="w-5 h-5 text-white" />
           </div>
           <span className="text-2xl font-bold text-white">ThumbnailAI</span>
         </motion.div>
-        
+
         <div className="flex items-center space-x-4">
-          <Button
-            variant="ghost"
-            className="text-white hover:bg-white/10"
-            onClick={() => document.getElementById('auth-section')?.scrollIntoView({ behavior: 'smooth' })}
-          >
-            Sign In
-          </Button>
           <Button
             className="text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
             onClick={() => document.getElementById('auth-section')?.scrollIntoView({ behavior: 'smooth' })}
@@ -72,38 +66,66 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="text-center px-6 py-20 max-w-6xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-        >
-          <h1 className="text-5xl md:text-7xl font-bold text-white mb-6">
-            Create Stunning
-            <span className="block bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              YouTube Thumbnails
-            </span>
-            with AI
-          </h1>
-          
-          <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
-            Transform your content with AI-generated thumbnails that capture attention, 
-            increase click-through rates, and grow your channel.
-          </p>
+      <section className="relative pt-24 pb-16 sm:pt-32 sm:pb-24 overflow-hidden ">
+        {/* Background Overlay + Hero Image */}
+        <div className="absolute inset-0 z-0">
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
+        </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            
-            <StartCreatingButton/>
-            
-            {/* <Button
-              variant="outline"
-              size="lg"
-              className="border-white/20 text-white hover:bg-white/10 text-lg px-8 py-6"
+        {/* Floating Random Thumbnails */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {[
+            { src: "https://res.cloudinary.com/cloud4lakshya/image/upload/v1757060809/beauty_fashion_vfeoic.jpg", className: "top-20 left-10 w-48 h-28 rotate-[-15deg]" },
+            { src: "https://res.cloudinary.com/cloud4lakshya/image/upload/v1757060759/cooking_example_bxbj0u.jpg", className: "top-32 right-16 w-56 h-32 rotate-[12deg]" },
+            { src: "https://res.cloudinary.com/cloud4lakshya/image/upload/v1757060759/finance_example_crhdaf.jpg", className: "bottom-40 left-20 w-44 h-26 rotate-[-8deg]" },
+            { src: "https://res.cloudinary.com/cloud4lakshya/image/upload/v1757060759/travel_example_a5sd1y.jpg", className: "bottom-32 right-32 w-48 h-28 rotate-[20deg]" },
+            { src: "https://res.cloudinary.com/cloud4lakshya/image/upload/v1757060759/gameexample_fsfsik.jpg", className: "top-1/2 left-5 w-40 h-24 rotate-[25deg]" },
+            { src: "https://res.cloudinary.com/cloud4lakshya/image/upload/v1757060758/fitness_example_xammlk.jpg", className: "top-1/3 right-8 w-52 h-30 rotate-[-22deg]" },
+
+          ].map((thumb, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.8, delay: 0.2 * i }}
+              className={`absolute rounded-xl overflow-hidden shadow-2xl transform hover:rotate-0 hover:scale-105 transition-transform duration-300 ${thumb.className}`}
             >
-              Watch Demo
-            </Button> */}
+              <img src={thumb.src} alt={`Thumbnail ${i}`} className="w-full h-full object-cover" />
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Content */}
+        <div className="relative z-20 px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
+          <div className="max-w-2xl mx-auto text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+            >
+              <h1 className="text-4xl font-extrabold text-white sm:text-5xl lg:text-6xl leading-tight">
+                AI-Powered
+                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 animate-gradient-x">
+                  YouTube Thumbnails That Convert
+                </span>
+              </h1>
+              <p className="mt-6 text-lg sm:text-xl text-gray-300 max-w-xl mx-auto leading-relaxed">
+                Generate stunning, click-worthy thumbnails in seconds.
+                <br />
+                Just describe your video and let AI do the magic.
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.5 }}
+              className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
+            >
+              <StartCreatingButton />
+            </motion.div>
           </div>
-        </motion.div>
+        </div>
       </section>
 
       {/* Features Section */}
@@ -183,7 +205,7 @@ export default function LandingPage() {
           <p className="text-xl text-gray-300 mb-8">
             Join thousands of creators who are already using ThumbnailAI to boost their views and engagement.
           </p>
-          
+
           {/* Login Form */}
           <div className="flex justify-center">
             <LoginForm />
@@ -201,7 +223,7 @@ export default function LandingPage() {
             <span className="text-xl font-bold text-white">ThumbnailAI</span>
           </div>
           <p className="text-gray-400">
-            © 2025 Thumbnail.AI . All rights reserved. Built for YT creators. 
+            © 2025 Thumbnail.AI . All rights reserved. Built for YT creators.
           </p>
         </div>
       </footer>
