@@ -108,7 +108,7 @@ export default function VoiceAgentButton({
       )}
 
       {currentText && (
-        <div className="text-[11px] text-gray-400 truncate">You said: "{currentText}"</div>
+        <div className="text-[11px] text-gray-400 ">You said: "{currentText}"</div>
       )}
     </div>
   );

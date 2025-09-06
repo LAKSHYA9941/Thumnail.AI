@@ -184,12 +184,21 @@ export default function ChatSection(props: Props) {
             )}
           </div>
 
-          <div className="flex space-x-2">
+          {/* Prompt block – textarea + voice stacked vertically */}
+          <div className="flex flex-col space-y-3">
+            {/* Voice agent sits above the textarea */}
+            <VoiceAgentButton
+              onPromptGenerated={setPrompt}
+              apiKey={import.meta.env.VITE_OPENAI_API_KEY || ''}
+              disabled={isGenerating || isRewriting}
+            />
+
+            {/* Textarea */}
             <Textarea
               placeholder="Describe your ideal YouTube thumbnail..."
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              className="flex-1 min-h-[60px] resize-none"
+              className="min-h-[80px] resize-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -197,23 +206,37 @@ export default function ChatSection(props: Props) {
                 }
               }}
             />
-            <div className="flex flex-col space-y-2">
-              <VoiceAgentButton
-                onPromptGenerated={setPrompt}
-                apiKey={import.meta.env.VITE_OPENAI_API_KEY || ''}
-                disabled={isGenerating || isRewriting}
-              />
-              <Button size="sm" variant="outline" onClick={onRewriteQuery} disabled={!prompt.trim() || isRewriting} className="border-purple-300 text-purple-300 hover:bg-purple-300 hover:text-slate-900">
-                {isRewriting ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
-                Improve Query
-              </Button>
-              <Button onClick={onGenerateThumbnail} disabled={!prompt.trim() || isGenerating} className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
-                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              </Button>
-            </div>
           </div>
 
+          {/* Action buttons – Improve & Generate */}
+          <div className="flex flex-col space-y-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onRewriteQuery}
+              disabled={!prompt.trim() || isRewriting}
+              className="border-purple-300 text-purple-300 hover:bg-purple-300 hover:text-slate-900"
+            >
+              {isRewriting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <MessageSquare className="w-4 h-4" />
+              )}
+              Improve Query
+            </Button>
 
+            <Button
+              onClick={onGenerateThumbnail}
+              disabled={!prompt.trim() || isGenerating}
+              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+            >
+              {isGenerating ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
           {prompt && prompt.startsWith('YouTube thumbnail') && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
               <div className="flex items-center justify-between">
