@@ -1,4 +1,4 @@
-import type { ConversationMessage } from './voiceAgent';
+import type { ConversationMessage } from '../types/conversation';
 
 interface StoredConversation {
   id: string;
@@ -73,13 +73,10 @@ class ConversationStorageService {
       if (!stored) return [];
 
       const conversations = JSON.parse(stored) as StoredConversation[];
-      // Ensure dates are properly parsed
+      // Ensure dates are properly handled
       return conversations.map(conv => ({
         ...conv,
-        messages: conv.messages.map(msg => ({
-          ...msg,
-          timestamp: new Date(msg.timestamp)
-        })),
+        messages: conv.messages,
         metadata: {
           ...conv.metadata,
           createdAt: new Date(conv.metadata.createdAt),
