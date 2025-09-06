@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { Mic, MicOff, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,31 +15,33 @@ export default function VoiceAgentButton({
   disabled = false
 }: VoiceAgentButtonProps) {
   const {
+    isInitialized,
     isListening,
     isProcessing,
     transcript,
     generatedPrompt,
     error,
+    initializeAgent,
     startListening,
     stopListening,
-    isSupported
+    isSupported,
+    isAvailable
   } = useVoiceAgent({
     onPromptGenerated,
     apiKey
   });
 
-  const [isAvailable, setIsAvailable] = useState(true);
-
-  useEffect(() => {
-    // Check API availability by testing if we can initialize
-    if (apiKey && apiKey.trim()) {
-      setIsAvailable(true);
-    } else {
-      setIsAvailable(false);
-    }
-  }, [apiKey]);
 
   const handleVoiceClick = async () => {
+    if (!isInitialized) {
+      try {
+        await initializeAgent();
+      } catch (err) {
+        console.error('Failed to initialize voice agent:', err);
+      }
+      return;
+    }
+
     if (isListening) {
       stopListening();
     } else {
@@ -68,6 +69,7 @@ export default function VoiceAgentButton({
   const getButtonText = () => {
     if (!isSupported) return 'Not Supported';
     if (!isAvailable) return 'API Error';
+    if (!isInitialized) return 'Initialize';
     if (isProcessing) return 'Processing...';
     if (isListening) return 'Listening...';
     if (generatedPrompt) return 'Use Prompt';
