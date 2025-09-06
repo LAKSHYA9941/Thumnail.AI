@@ -117,11 +117,30 @@ export const useVoiceAgent = ({ onPromptGenerated, apiKey }: UseVoiceAgentProps)
         };
         sessionMessagesRef.current.push(userMessage);
         
+        // Automatically generate prompt from transcript
+        try {
+          const prompt = await voiceAgentRef.current.generateThumbnailPrompt(transcript);
+          setState(prev => ({ 
+            ...prev, 
+            transcript, 
+            generatedPrompt: prompt,
+            isProcessing: false,
+            conversationHistory: [...sessionMessagesRef.current]
+          }));
+          onPromptGenerated?.(prompt);
+        } catch (error) {
+          setState(prev => ({ 
+            ...prev, 
+            transcript, 
+            isProcessing: false,
+            error: 'Failed to generate prompt from speech'
+          }));
+        }
+      } else {
         setState(prev => ({ 
           ...prev, 
-          transcript, 
-          isProcessing: true,
-          conversationHistory: [...sessionMessagesRef.current]
+          transcript: '',
+          isProcessing: false
         }));
       }
     } catch (error) {
