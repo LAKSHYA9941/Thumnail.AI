@@ -213,6 +213,24 @@ export default function ChatSection(props: Props) {
             </div>
           </div>
 
+
+          {prompt && prompt.startsWith('YouTube thumbnail') && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-blue-800">AI-Generated Prompt:</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => copyToClipboard(prompt)}
+                >
+                  Copy
+                </Button>
+              </div>
+              <p className="text-sm text-gray-700 mt-1">{prompt}</p>
+            </div>
+          )}
+
+
           {rewrittenPrompt && (
             <div className="space-y-3">
               <Label className="text-sm font-medium">Enhanced Prompt</Label>

@@ -226,7 +226,7 @@ export class OpenAIRealtimeAgent {
           { role: 'user', content: base }
         ],
         max_tokens: 150,
-        temperature: 0.7
+        temperature: 1
       });
       const refined = resp.choices?.[0]?.message?.content?.trim();
       const composed = this.applyCompositionConstraints(refined || base);
@@ -242,7 +242,7 @@ export class OpenAIRealtimeAgent {
     const hasSize = normalized.includes('1280') || normalized.includes('720') || normalized.includes('16:9');
     const constraints = 'YouTube thumbnail, 1280x720 (16:9). Center-focused composition. Avoid side color bands or empty margins. Ensure subject and text are centered and fill the frame edge-to-edge with clear focal point.';
     return hasSize
-      ? `${basePrompt}. Center-focused composition. Avoid side color bands or empty margins. Ensure subject and text are centered and fill the frame.`
+      ? `${basePrompt}. Center-focused composition. Avoid side color bands or empty margins. Ensure subject and text are centered and fill the frame. ensure the whole image is contentfull not a single patch should be empty`
       : `${basePrompt}. ${constraints}`;
   }
 }
