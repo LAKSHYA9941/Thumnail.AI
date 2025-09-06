@@ -1,5 +1,5 @@
 import { OpenAI } from 'openai';
-import type { VoiceAgentConfig, ConversationMessage, VoiceSession } from '../types/conversation';
+import type { VoiceAgentConfig } from '../types/conversation';
 
 // Type declarations for Web Speech API
 declare global {
@@ -20,7 +20,6 @@ class VoiceAgentService {
   private recognition: any = null;
   private isListening = false;
   private config: Required<VoiceAgentConfig>;
-  private currentSession: VoiceSession | null = null;
   private silenceTimer: NodeJS.Timeout | null = null;
   
   // Event handlers with default no-op functions
