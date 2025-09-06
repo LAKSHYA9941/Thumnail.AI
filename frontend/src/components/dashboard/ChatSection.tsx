@@ -62,6 +62,8 @@ export default function ChatSection(props: Props) {
     recentGenerated,
   } = props;
 
+  console.log("generatedPrompt", prompt);
+
   return (
     <Card className="flex flex-col">
       <CardHeader>

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Mic, MicOff, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +31,12 @@ export default function VoiceAgentButton({
     onPromptGenerated,
     apiKey
   });
+
+  useEffect(() => {
+    if (generatedPrompt && generatedPrompt.trim()) {
+      onPromptGenerated(generatedPrompt);
+    }
+  }, [generatedPrompt, onPromptGenerated]);
 
 
   const handleVoiceClick = async () => {
