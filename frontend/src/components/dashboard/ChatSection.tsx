@@ -198,7 +198,7 @@ export default function ChatSection(props: Props) {
             <div className="flex flex-col space-y-2">
               <VoiceAgentButton
                 onPromptGenerated={setPrompt}
-                apiKey={import.meta.env.OPENAI_API_KEY || ''}
+                apiKey={import.meta.env.VITE_OPENAI_API_KEY || ''}
                 disabled={isGenerating || isRewriting}
               />
               <Button size="sm" variant="outline" onClick={onRewriteQuery} disabled={!prompt.trim() || isRewriting} className="border-purple-300 text-purple-300 hover:bg-purple-300 hover:text-slate-900">
