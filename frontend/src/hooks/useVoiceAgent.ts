@@ -213,6 +213,8 @@ export const useVoiceAgent = ({ onPromptGenerated, apiKey }: UseVoiceAgentProps)
     startListening,
     stopListening,
     generatePromptFromConversation,
-    clearConversation
+    clearConversation,
+    isSupported: typeof window !== 'undefined' && !!(window.SpeechRecognition || window.webkitSpeechRecognition),
+    isAvailable: !!apiKey && apiKey.trim().length > 0
   };
 };

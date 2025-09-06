@@ -23,10 +23,7 @@ export default function VoiceAgentButton({
     error,
     startListening,
     stopListening,
-    applyGeneratedPrompt,
-    clearGeneratedPrompt,
-    isSupported,
-    checkApiAvailability
+    isSupported
   } = useVoiceAgent({
     onPromptGenerated,
     apiKey
@@ -35,8 +32,13 @@ export default function VoiceAgentButton({
   const [isAvailable, setIsAvailable] = useState(true);
 
   useEffect(() => {
-    checkApiAvailability().then(setIsAvailable);
-  }, [checkApiAvailability]);
+    // Check API availability by testing if we can initialize
+    if (apiKey && apiKey.trim()) {
+      setIsAvailable(true);
+    } else {
+      setIsAvailable(false);
+    }
+  }, [apiKey]);
 
   const handleVoiceClick = async () => {
     if (isListening) {
@@ -51,8 +53,8 @@ export default function VoiceAgentButton({
   };
 
   const handleApplyPrompt = () => {
-    applyGeneratedPrompt();
-    clearGeneratedPrompt();
+    // The prompt is already applied via onPromptGenerated callback
+    // No additional action needed
   };
 
   const getButtonVariant = () => {
