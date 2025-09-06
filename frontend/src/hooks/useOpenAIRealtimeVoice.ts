@@ -58,9 +58,9 @@ export const useOpenAIRealtimeVoice = ({
 
     setState(prev => ({ ...prev, isListening: true, error: null }));
     
-    // For now, we'll use a text-based approach since WebRTC audio streaming is complex
-    // In production, this would use OpenAI's WebRTC streaming API
-    setState(prev => ({ ...prev, isProcessing: true }));
+    // Text-based approach: simulate voice input with text
+    // In real implementation, this would capture audio and convert to text
+    console.log('🎤 Ready for text input (simulating voice)...');
   }, [initializeAgent]);
 
   const stopListening = useCallback(async () => {
@@ -80,12 +80,17 @@ export const useOpenAIRealtimeVoice = ({
     
     try {
       await agentRef.current.processTextInput(text);
-      setState(prev => ({ ...prev, isProcessing: false }));
+      setState(prev => ({ 
+        ...prev, 
+        isProcessing: false,
+        isListening: false
+      }));
     } catch (error) {
       console.error('Error processing text:', error);
       setState(prev => ({ 
         ...prev, 
         isProcessing: false,
+        isListening: false,
         error: 'Failed to process text'
       }));
     }
