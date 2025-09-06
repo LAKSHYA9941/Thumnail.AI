@@ -43,11 +43,17 @@ class VoiceAgentService {
     if (typeof window === 'undefined') return;
     
     try {
+      console.log('🔧 Initializing speech recognition...');
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      
       if (!SpeechRecognition) {
-        throw new Error('Speech recognition not supported');
+        console.error('❌ Speech recognition not supported');
+        this.onError('Speech recognition not supported');
+        return;
       }
 
+      console.log('✅ Speech recognition supported:', SpeechRecognition.name);
+      
       this.recognition = new SpeechRecognition();
       this.recognition.continuous = true;
       this.recognition.interimResults = true;
@@ -57,8 +63,10 @@ class VoiceAgentService {
       this.recognition.onerror = this.handleRecognitionError.bind(this);
       this.recognition.onend = this.handleRecognitionEnd.bind(this);
       
+      console.log('🎯 Speech recognition initialized successfully');
+      
     } catch (error) {
-      console.error('Failed to initialize speech recognition:', error);
+      console.error('🚨 Failed to initialize speech recognition:', error);
       this.onError('Speech recognition not available in this browser');
     }
   }
@@ -78,9 +86,17 @@ class VoiceAgentService {
       }
     }
 
+    console.log('🎤 Speech Recognition:', {
+      final: finalTranscript.trim(),
+      interim: interimTranscript,
+      confidence: event.results[event.resultIndex]?.[0]?.confidence
+    });
+
     if (finalTranscript) {
+      console.log('🎯 Final transcript:', finalTranscript.trim());
       this.onFinalResult(finalTranscript.trim());
     } else if (interimTranscript) {
+      console.log('🔄 Interim transcript:', interimTranscript);
       this.onInterimResult(interimTranscript);
     }
 
@@ -88,6 +104,11 @@ class VoiceAgentService {
   }
 
   private handleRecognitionError(event: any) {
+    console.error('🎤 Speech Recognition Error:', {
+      error: event.error,
+      message: event.message || 'Unknown error'
+    });
+    
     const error = event.error === 'no-speech' 
       ? 'No speech detected' 
       : `Speech recognition error: ${event.error}`;
@@ -136,7 +157,13 @@ class VoiceAgentService {
   }
 
   async generateThumbnailPrompt(transcript: string): Promise<string> {
-    if (!transcript.trim()) return '';
+    if (!transcript.trim()) {
+      console.log('🎤 Empty transcript received, skipping generation');
+      return '';
+    }
+
+    console.log('🎤 Generating prompt for transcript:', transcript.substring(0, 50) + '...');
+    console.log('🤖 OpenAI Config:', { model: this.config.model, maxTokens: this.config.maxTokens });
 
     try {
       const response = await this.openai.chat.completions.create({
@@ -149,15 +176,33 @@ class VoiceAgentService {
         ],
         max_tokens: this.config.maxTokens,
         temperature: this.config.temperature,
+      }, {
+        timeout: 15000, // 15 second timeout
+        maxRetries: 1
       });
 
       const generatedText = response.choices[0]?.message?.content?.trim() || '';
+      console.log('✅ Generated prompt:', generatedText);
       this.onPromptGenerated(generatedText);
       return generatedText;
       
-    } catch (error) {
-      console.error('Error generating thumbnail prompt:', error);
-      this.onError('Failed to generate prompt. Please try again.');
+    } catch (error: any) {
+      console.error('🚨 OpenAI API Error:', {
+        message: error.message,
+        status: error.status,
+        code: error.code,
+        type: error.type
+      });
+      
+      if (error.status === 401) {
+        this.onError('Invalid API key. Please check your OpenAI API key.');
+      } else if (error.status === 429) {
+        this.onError('Rate limit exceeded. Please try again later.');
+      } else if (error.code === 'ECONNABORTED') {
+        this.onError('Network timeout. Please check your connection.');
+      } else {
+        this.onError(`API Error: ${error.message || 'Failed to generate prompt'}`);
+      }
       return '';
     }
   }
