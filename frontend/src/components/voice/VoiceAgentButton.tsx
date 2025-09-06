@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Mic, MicOff, Loader2 } from 'lucide-react';
+import { Mic, MicOff, Loader2, Play, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useOpenAIRealtimeVoice } from '@/hooks/useOpenAIRealtimeVoice';
@@ -17,11 +17,16 @@ export default function VoiceAgentButton({
 }: VoiceAgentButtonProps) {
   const {
     isListening,
+    isRecording,
     isProcessing,
     initializeAgent,
-    startListening,
-    stopListening,
-    currentText
+    startConversation,
+    startRecording,
+    stopAndSubmit,
+    stopConversation,
+    currentText,
+    currentQuestion,
+    status
   } = useOpenAIRealtimeVoice({
     onPromptGenerated,
     apiKey
@@ -32,51 +37,78 @@ export default function VoiceAgentButton({
     console.log('🎤 Voice Agent Ready! Click "Voice" to start, then describe your thumbnail idea');
   }, [initializeAgent]);
 
-  const handleVoiceClick = async () => {
-    if (isListening) {
-      stopListening();
-    } else {
-      try {
-        await startListening();
-      } catch (err) {
-        console.error('Voice agent error:', err);
-      }
-    }
-  };
-
-  const getButtonText = () => {
-    if (isProcessing) return 'Processing...';
-    if (isListening) return 'Listening...';
-    return 'Voice';
-  };
-
   return (
-    <div className="flex flex-col space-y-2">
+    <div className="flex flex-col space-y-2 w-full">
       <div className="flex items-center space-x-2">
-        <Button
-          variant={isListening ? "destructive" : "outline"}
-          size="sm"
-          onClick={handleVoiceClick}
-          disabled={disabled || isProcessing}
-          className="relative"
-          title={isListening ? "Click to stop" : "Click to describe your thumbnail idea"}
-        >
-          {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : 
-           isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-          <span className="ml-2 hidden sm:inline">{getButtonText()}</span>
-        </Button>
+        {!isListening ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={startConversation}
+            disabled={disabled || isProcessing}
+            title="Start a guided voice chat to craft your prompt"
+          >
+            {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+            <span className="ml-2 hidden sm:inline">Start Voice</span>
+          </Button>
+        ) : (
+          <>
+            {!isRecording ? (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={startRecording}
+                disabled={disabled || isProcessing}
+                title="Start recording your answer"
+              >
+                <Mic className="w-4 h-4" />
+                <span className="ml-2 hidden sm:inline">Record</span>
+              </Button>
+            ) : (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={stopAndSubmit}
+                disabled={disabled}
+                title="Stop recording and submit answer"
+              >
+                <MicOff className="w-4 h-4" />
+                <span className="ml-2 hidden sm:inline">Stop & Submit</span>
+              </Button>
+            )}
 
-        {currentText && (
-          <Badge variant="outline" className="max-w-xs truncate">
-            "{currentText}"
-          </Badge>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={stopConversation}
+              disabled={disabled || isProcessing}
+              title="End the voice conversation"
+            >
+              <Square className="w-4 h-4" />
+              <span className="ml-2 hidden sm:inline">End</span>
+            </Button>
+          </>
+        )}
+
+        {status && (
+          <Badge variant="outline" className="truncate max-w-[180px]">{status}</Badge>
         )}
       </div>
-      
-      {!isListening && !currentText && (
-        <div className="text-xs text-gray-500">
-          🎤 Click "Voice" and say: "YouTube thumbnail for [your topic]"
+
+      {isListening && (
+        <div className="text-xs text-gray-500 text-left">
+          {currentQuestion ? (
+            <>
+              <span className="font-medium text-gray-300">Assistant asks:</span> {currentQuestion}
+            </>
+          ) : (
+            <span>Answer the question and press "Stop & Submit".</span>
+          )}
         </div>
+      )}
+
+      {currentText && (
+        <div className="text-[11px] text-gray-400 truncate">You said: "{currentText}"</div>
       )}
     </div>
   );
