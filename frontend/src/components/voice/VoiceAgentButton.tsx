@@ -83,8 +83,9 @@ export default function VoiceAgentButton({
   };
 
   const tooltipContent = () => {
-    if (!isSupported) return "Speech recognition not supported in this browser";
+    if (!isSupported) return "Speech recognition not supported. Try Chrome/Edge";
     if (!isAvailable) return "OpenAI API unavailable or credits exhausted";
+    if (!isInitialized) return "Click to initialize voice agent";
     if (isListening) return "Click to stop listening";
     if (generatedPrompt) return "Click to use generated prompt";
     return "Click to start voice input";
