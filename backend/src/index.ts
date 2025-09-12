@@ -9,6 +9,8 @@ import { seedOneUser } from "./seed.js";
 import { fileURLToPath } from 'url';
 import { Request, Response, NextFunction } from 'express';
 import fs from 'fs';
+import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
 
 
 dotenv.config();
@@ -17,6 +19,35 @@ const app = express();
 // Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", process.env.FRONTEND_URL || 'https://thumnail-ai.vercel.app'],
+    },
+  },
+}));
+
+// Rate limiting
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // limit each IP to 5 requests per windowMs
+  message: {
+    error: 'Too many authentication attempts, please try again later',
+    code: 'RATE_LIMIT_EXCEEDED',
+    retryAfter: 15
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limiting to auth routes
+app.use('/api/auth', authLimiter);
 
 // ✅ Fix CORS - Allow methods, headers, handle preflight
 app.use(cors({

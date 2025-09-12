@@ -9,6 +9,7 @@ import HistorySection from "@/components/dashboard/HistorySection";
 import { useDropzone } from "react-dropzone";
 import axios from "axios";
 import { useToast } from "@/components/ui/toast";
+import { useAuthStore } from "@/stores/authStore";
 
 interface Thumbnail {
   _id: string;
@@ -19,13 +20,7 @@ interface Thumbnail {
   createdAt: string;
 }
 
-interface User {
-  id: string;
-  email: string;
-  name?: string;
-  avatar?: string;
-  isGoogleUser: boolean;
-}
+// User interface is now handled by Zustand
 
 interface ChatMessage {
   id: string;
@@ -37,7 +32,6 @@ interface ChatMessage {
 }
 
 export default function Dashboard() {
-  const [user, setUser] = useState<User | null>(null);
   const [thumbnails, setThumbnails] = useState<Thumbnail[]>([]);
   const [prompt, setPrompt] = useState("");
   const [rewrittenPrompt, setRewrittenPrompt] = useState("");
@@ -47,24 +41,32 @@ export default function Dashboard() {
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string>("");
   const [activeTab, setActiveTab] = useState("chat");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [recentGenerated, setRecentGenerated] = useState<Array<{ imageUrl: string; prompt: string }>>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const { addToast } = useToast();
   const navigate = useNavigate();
 
+  const { user, isLoading, checkAuth, logout } = useAuthStore();
   const API_BASE = "https://thumnail-ai.onrender.com/api";
 
   useEffect(() => {
-    loadUserProfile();
-    loadThumbnails();
+    const checkAuthStatus = async () => {
+      const isAuth = await checkAuth();
+      if (!isAuth) {
+        navigate("/", { replace: true });
+        return;
+      }
+      loadThumbnails();
+    };
+
+    checkAuthStatus();
+
     // Restore chat and recents from localStorage
     try {
       const savedMessages = localStorage.getItem("chatMessages");
       if (savedMessages) {
         const parsed: ChatMessage[] = JSON.parse(savedMessages).map((m: any) => ({
           ...m,
-          // Drop any persisted blob URLs to avoid broken images
           imageUrl: m.imageUrl && typeof m.imageUrl === 'string' && m.imageUrl.startsWith('blob:') ? undefined : m.imageUrl,
           timestamp: new Date(m.timestamp)
         }));
@@ -75,7 +77,7 @@ export default function Dashboard() {
         setRecentGenerated(JSON.parse(savedRecents));
       }
     } catch {}
-  }, []);
+  }, [checkAuth, navigate]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -100,36 +102,6 @@ export default function Dashboard() {
     } catch {}
   }, [recentGenerated]);
 
-  const loadUserProfile = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        // No token found, redirect to login
-        navigate("/");
-        return;
-      }
-
-      const response = await axios.get(`${API_BASE}/auth/profile`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setUser(response.data.user);
-    } catch (error: any) {
-      console.error("Failed to load user profile:", error);
-
-      // If token is invalid or expired, redirect to login
-      if (error.response?.status === 401) {
-        localStorage.removeItem("token");
-        navigate("/");
-        return;
-      }
-
-      // Keep UI simple; error toast optional
-      addToast('error', 'Failed to load user profile');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const loadThumbnails = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -138,9 +110,7 @@ export default function Dashboard() {
         return;
       }
 
-      const response = await axios.get(`${API_BASE}/generate/thumbnails`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.get(`${API_BASE}/generate/thumbnails`);
       setThumbnails(response.data.thumbnails);
     } catch (error) {
       console.error("Failed to load thumbnails:", error);
@@ -148,10 +118,9 @@ export default function Dashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
+    logout();
     localStorage.removeItem("chatMessages");
     localStorage.removeItem("recentGenerated");
-    navigate("/");
   };
 
   const handleImageUpload = (acceptedFiles: File[]) => {
@@ -238,7 +207,6 @@ export default function Dashboard() {
 
       const response = await axios.post(`${API_BASE}/generate/images`, formData, {
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
         }
       });
@@ -305,9 +273,7 @@ export default function Dashboard() {
       const token = localStorage.getItem("token");
       if (!token) return;
 
-      await axios.delete(`${API_BASE}/generate/thumbnails/${thumbnailId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axios.delete(`${API_BASE}/generate/thumbnails/${thumbnailId}`);
 
       // Reload thumbnails
       await loadThumbnails();

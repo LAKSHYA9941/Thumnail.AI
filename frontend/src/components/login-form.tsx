@@ -9,8 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Eye, EyeOff, Mail, Lock, User, Sparkles } from "lucide-react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "@/stores/authStore";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -33,11 +33,9 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 export function LoginForm() {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
   const navigate = useNavigate();
-
-  const API_BASE = "https://thumnail-ai.onrender.com/api";
+  
+  const { login, register, isLoading, error, clearError } = useAuthStore();
 
 
   const loginForm = useForm<LoginFormData>({
@@ -49,76 +47,29 @@ export function LoginForm() {
   });
 
   const onLogin = async (data: LoginFormData) => {
-    setIsLoading(true);
-    setError("");
-    try {
-      const res = await axios.post(`${API_BASE}/auth/login`, data);
-      console.log("login success →", res.data);
-      
-      // Save token to localStorage
-      localStorage.setItem("token", res.data.token);
-      
-      // Fetch user profile to verify token and get user data
-      try {
-        const profileRes = await axios.get(`${API_BASE}/auth/profile`, {
-          headers: { Authorization: `Bearer ${res.data.token}` }
-        });
-        
-        console.log("profile fetch success →", profileRes.data);
-        
-        // Only redirect if profile fetch succeeds
-        navigate("/dashboard");
-      } catch (profileError: any) {
-        console.error("profile fetch failed →", profileError);
-        // Remove invalid token
-        localStorage.removeItem("token");
-        setError("Authentication failed. Please try again.");
-      }
-    } catch (err: any) {
-      console.error("login error →", err);
-      setError(err.response?.data?.error || "Login failed");
-    } finally {
-      setIsLoading(false);
+    clearError();
+    const success = await login(data.email, data.password);
+    if (success) {
+      navigate("/dashboard", { replace: true });
     }
   };
 
   const onRegister = async (data: RegisterFormData) => {
-    setIsLoading(true);
-    setError("");
-
-    try {
-      const response = await axios.post(`${API_BASE}/auth/register`, data);
-      
-      // Save token to localStorage
-      localStorage.setItem("token", response.data.token);
-      
-      // Fetch user profile to verify token and get user data
-      try {
-        const profileRes = await axios.get(`${API_BASE}/auth/profile`, {
-          headers: { Authorization: `Bearer ${response.data.token}` }
-        });
-        
-        console.log("profile fetch success →", profileRes.data);
-        
-        // Only redirect if profile fetch succeeds
-        navigate("/dashboard");
-      } catch (profileError: any) {
-        console.error("profile fetch failed →", profileError);
-        // Remove invalid token
-        localStorage.removeItem("token");
-        setError("Registration successful but authentication failed. Please try logging in.");
-      }
-    } catch (error: any) {
-      setError(error.response?.data?.error || "Registration failed");
-    } finally {
-      setIsLoading(false);
+    clearError();
+    const success = await register({
+      email: data.email,
+      password: data.password,
+      name: data.name
+    });
+    if (success) {
+      navigate("/dashboard", { replace: true });
     }
   };
 
   const handleGoogleLogin = async () => {
     // In a real app, you would integrate with Google OAuth
     // For now, we'll show a message
-    setError("Google OAuth integration coming soon!");
+    // Google OAuth integration coming soon!
   };
 
   return (
