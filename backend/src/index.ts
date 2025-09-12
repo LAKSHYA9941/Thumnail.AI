@@ -16,6 +16,9 @@ import helmet from 'helmet';
 dotenv.config();
 const app = express();
 
+// Trust proxy for accurate IP identification behind reverse proxies
+app.set('trust proxy', 1);
+
 // Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
