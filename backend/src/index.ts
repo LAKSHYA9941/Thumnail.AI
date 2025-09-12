@@ -53,10 +53,16 @@ const authLimiter = rateLimit({
 app.use('/api/auth', authLimiter);
 
 // ✅ Fix CORS - Allow methods, headers, handle preflight
+const allowedOrigins = [
+  'https://thumnail-ai.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:3000'
+];
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'https://thumnail-ai.vercel.app',
+  origin: process.env.FRONTEND_URL ? [process.env.FRONTEND_URL, ...allowedOrigins] : allowedOrigins,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   credentials: true
 }));
 
