@@ -178,7 +178,7 @@ export async function generateImages(req: AuthRequest, res: Response) {
     }
 
     /* 1️⃣  Generate image using Google Gemini API */
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-image" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-image-preview" });
 
     const systemPrompt = `You are an expert at making YouTube thumbnails. Focus on clear, impactful imagery and strong visuals. Consider the following when generating:
 - Catchy: it should grab attention quickly
