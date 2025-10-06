@@ -8,8 +8,6 @@ import { v2 as cloudinary } from "cloudinary";
 import { Thumbnail } from "../models/thumbnail.model.js";
 import { AuthRequest } from "../middlewares/singleUserAuth.js";
 import fs from "fs";
-import path from "path";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
 /* --------------------------
    Cloudinary config
@@ -26,27 +24,19 @@ if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !pr
 }
 
 /* --------------------------
-   OpenRouter client (for query rewriting only)
+   Replicate configuration
 --------------------------- */
-const openai = new (await import("openai")).default({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.OPENROUTER_API_KEY,
-});
-
-/* --------------------------
-   Google Gemini client (for image generation)
---------------------------- */
-let genAI: GoogleGenerativeAI | null = null;
-if (process.env.GEMINI_API_KEY) {
-  genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-}
+const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
+const REPLICATE_VERSION = process.env.REPLICATE_FLUX_SCHNELL_VERSION || "c846a69991daf4c0e5d016514849d14ee5b2e6846ce6b9d6f21369e564cfe51e";
+const REPLICATE_POLL_INTERVAL = Number(process.env.REPLICATE_POLL_INTERVAL_MS || 2000);
+const REPLICATE_TIMEOUT = Number(process.env.REPLICATE_TIMEOUT_MS || 120000);
 
 // Validate API configurations
 if (!process.env.OPENROUTER_API_KEY) {
   console.warn('⚠️ OpenRouter API key missing. Query rewriting will use fallback.');
 }
-if (!process.env.GEMINI_API_KEY) {
-  console.error('❌ Gemini API key missing. Please check your environment variables.');
+if (!REPLICATE_API_TOKEN) {
+  console.error('❌ Replicate API token missing. Image generation will fail.');
 }
 
 /* --------------------------
@@ -168,17 +158,12 @@ export async function generateImages(req: AuthRequest, res: Response) {
       }
     }
 
-    // Check if Gemini API key is available
-    if (!process.env.GEMINI_API_KEY || !genAI) {
-      console.error("❌ Gemini API key is required for image generation");
+    if (!REPLICATE_API_TOKEN) {
       return res.status(500).json({
         error: "AI service configuration missing",
-        details: "Gemini API key is required for image generation. Please check your environment variables."
+        details: "Replicate API token is required for image generation. Please check your environment variables."
       });
     }
-
-    /* 1️⃣  Generate image using Google Gemini API */
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-image-preview" });
 
     const systemPrompt = `You are an expert at making YouTube thumbnails. Focus on clear, impactful imagery and strong visuals. Consider the following when generating:
 - Catchy: it should grab attention quickly
@@ -212,65 +197,91 @@ REQUIREMENTS:
 - Exaggerate on every element to make it look more impactful
 - ALWAYS USE THE REFERENCE IMAGE IF IT IS PROVIDED AND ENHANCE SO THAT THE USER GET THE BEST VERSION OF HIM/HERSELF`;
 
-    let parts: any[] = [
-      { text: `${systemPrompt}\n\nGenerate a YouTube thumbnail for: ${finalPrompt}` }
-    ];
+    const payload: any = {
+      version: REPLICATE_VERSION,
+      input: {
+        prompt: `${systemPrompt}\n\nGenerate a YouTube thumbnail for: ${finalPrompt}`,
+        aspect_ratio: "16:9",
+        output_format: "png",
+        output_quality: 100,
+        num_outputs: 1,
+        num_inference_steps: 4,
+        go_fast: true,
+      },
+    };
 
-    // Add reference image if provided
     if (originalImageUrl) {
-      try {
-        const imageResponse = await axios.get(originalImageUrl, { responseType: 'arraybuffer' });
-        const imageBuffer = Buffer.from(imageResponse.data);
-        const mimeType = imageResponse.headers['content-type'] || 'image/jpeg';
-
-        parts.push({
-          inlineData: {
-            data: imageBuffer.toString('base64'),
-            mimeType: mimeType
-          }
-        });
-      } catch (imageError) {
-        console.warn('Failed to fetch reference image:', imageError);
-      }
+      payload.input.image = originalImageUrl;
     }
 
-    const result = await model.generateContent(parts);
-    const response = await result.response;
+    const replicateHeaders = {
+      Authorization: `Token ${REPLICATE_API_TOKEN}`,
+      "Content-Type": "application/json",
+    };
 
-    // Extract generated images from the response
-    const candidates = response.candidates;
-    if (!candidates || candidates.length === 0) {
-      return res.status(500).json({ error: "No image generated" });
+    const startTime = Date.now();
+    const prediction = await axios.post(
+      "https://api.replicate.com/v1/predictions",
+      payload,
+      { headers: replicateHeaders }
+    );
+
+    const predictionId = prediction.data.id;
+    let predictionStatus = prediction.data.status;
+    let predictionOutput: string[] | undefined;
+    let predictionError: string | undefined;
+
+    while (predictionStatus === "starting" || predictionStatus === "processing") {
+      if (Date.now() - startTime > REPLICATE_TIMEOUT) {
+        await axios.post(
+          `https://api.replicate.com/v1/predictions/${predictionId}/cancel`,
+          {},
+          { headers: replicateHeaders }
+        ).catch(() => {});
+        return res.status(504).json({
+          error: "Image generation timed out",
+          details: "Replicate prediction exceeded the configured timeout",
+        });
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, REPLICATE_POLL_INTERVAL));
+
+      const poll = await axios.get(
+        `https://api.replicate.com/v1/predictions/${predictionId}`,
+        { headers: replicateHeaders }
+      );
+
+      predictionStatus = poll.data.status;
+      predictionOutput = poll.data.output;
+      predictionError = poll.data.error;
+    }
+
+    if (predictionStatus !== "succeeded" || !predictionOutput?.length) {
+      console.error("Replicate generation failed", predictionError || predictionStatus);
+      return res.status(500).json({
+        error: "Image generation failed",
+        details: predictionError || `Replicate status: ${predictionStatus}`,
+      });
     }
 
     const base64s: string[] = [];
-    for (const candidate of candidates) {
-      if (candidate.content && candidate.content.parts) {
-        for (const part of candidate.content.parts) {
-          if (part.inlineData && part.inlineData.data) {
-            const mimeType = part.inlineData.mimeType || 'image/png';
-            base64s.push(`data:${mimeType};base64,${part.inlineData.data}`);
-          }
-        }
+    for (const outputUrl of predictionOutput) {
+      try {
+        const { data: imgData } = await axios.get(outputUrl, { responseType: "arraybuffer" });
+        base64s.push(`data:image/png;base64,${Buffer.from(imgData).toString("base64")}`);
+      } catch (downloadErr) {
+        console.warn("Failed to download Replicate output", downloadErr);
       }
     }
 
     if (!base64s.length) {
-      return res.status(500).json({ error: "No image data received from Gemini" });
+      return res.status(500).json({ error: "No image data received from Replicate" });
     }
 
-    /* 3️⃣  Upload each to Cloudinary (resize on-the-fly) */
     /* 3️⃣  Upload each to Cloudinary (perfect YT thumbnail with smart crop) */
     const urls: string[] = [];
     for (const src of base64s) {
-      let buffer: Buffer;
-      if (src.startsWith("data:image")) {
-        buffer = Buffer.from(src.split(",")[1], "base64");
-      } else {
-        const { data: arrBuff } = await axios.get(src, { responseType: "arraybuffer" });
-        buffer = Buffer.from(arrBuff);
-      }
-
+      const buffer = Buffer.from(src.split(",")[1], "base64");
       const uploadRes = await cloudinary.uploader.upload(
         `data:image/png;base64,${buffer.toString("base64")}`,
         {
@@ -303,21 +314,8 @@ REQUIREMENTS:
   } catch (err: any) {
     console.error("Image gen error:", err.response?.data || err.message);
 
-    // Check if it's a Gemini API error
-    if (err.message && err.message.includes('API_KEY')) {
-      console.error("❌ Gemini API key is invalid or expired");
-      return res.status(500).json({
-        error: "AI service authentication failed. Please check your API configuration.",
-        details: "The Gemini API key appears to be invalid or expired."
-      });
-    }
-
-    if (err.message && err.message.includes('QUOTA_EXCEEDED')) {
-      console.error("❌ Gemini API quota exceeded");
-      return res.status(500).json({
-        error: "AI service quota exceeded",
-        details: "The Gemini API quota has been exceeded. Please try again later or check your billing."
-      });
+    if (err.response?.data) {
+      console.error("Replicate API error:", err.response.data);
     }
 
     // Check if it's a Cloudinary error
