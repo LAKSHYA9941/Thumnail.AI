@@ -168,33 +168,9 @@ export async function generateImages(req: AuthRequest, res: Response) {
     const systemPrompt = `You are an expert at making YouTube thumbnails. Focus on clear, impactful imagery and strong visuals. Consider the following when generating:
 - Catchy: it should grab attention quickly
 - Relevance: it should accurately represent the video content
-- Text: best in class title for the video it should be legible, short, and punchy (Max 3-4 words)
-- Text used should be 3D Glowing, sparkly making an impact at the audience colors related to the theme
-- Composition: Use the best techniques there are for composition
-- Color: Contrasting vibrant colors like it should set up the vibe of the video idea
 - Emotion/Intrigue: it should evoke curiosity or a strong emotion
-- Background Style: The background should be giving thumbnail a dramatic, intense, and user desired feeling. 
-FOR EXAMPLE: Maintain visual tension with warm tones (reds/oranges/yellows) for urgency or cool tones (blues/greens) for calm topics. 
-
-Cropping Instructions:
-All generated images must be cropped to a strict 16:9 aspect ratio, suitable for YouTube thumbnails. The resolution should be at least 1280x720 pixels and content should be within the canvas no content item should be out of the frame and no blank spaces.
-
-REQUIREMENTS:
+- Background Style: The background should be giving thumbnail a dramatic, intense, and user desired feeling.
 - Follow the Rule of Thirds — place faces near the intersections to draw attention.
-- Keep faces large and expressive (thumbnails with visible emotions get more clicks).
-- Avoid leaving too much empty space — fill the frame with meaningful elements.
-- Maintain visual tension with warm tones (reds/oranges/yellows) for urgency or cool tones (blues/greens) for calm topics. 
-- It should be landscape-oriented, which is ideal for video thumbnails.
-- Number of objects should be minimum, the prominent one should be the object in the image uploaded by the user.
-- The object should be in the center,left and right of the image as specified by the user if not specified then it should be in the left.
-- Generated object other than the prominent one should be placed well anywhere visible in the image.
-- Keep the background slightly blurred or darkened so the main subjects pop.
-- Additional Elements can be there FOR EXAMPLE:- a group of small crowd figures placed near the bottom center, behind a building.
-- Generate exactly 1280x720 pixels (16:9 ratio)
-- NEVER crop elements - fit everything within canvas
-- Keep It Short & Punchy aim for 3-6 words max.
-- the Frame should be filled with content props anything but it should look contentfull.
-- Exaggerate on every element to make it look more impactful
 - ALWAYS USE THE REFERENCE IMAGE IF IT IS PROVIDED AND ENHANCE SO THAT THE USER GET THE BEST VERSION OF HIM/HERSELF`;
 
     const payload: any = {
