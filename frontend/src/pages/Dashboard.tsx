@@ -7,9 +7,8 @@ import ChatSection from "@/components/dashboard/ChatSection";
 import GallerySection from "@/components/dashboard/GallerySection";
 import HistorySection from "@/components/dashboard/HistorySection";
 import { useDropzone } from "react-dropzone";
-import axios from "axios";
 import { useToast } from "@/components/ui/toast";
-import { useAuthStore } from "@/stores/authStore";
+import { api, useAuthStore } from "@/stores/authStore";
 
 interface Thumbnail {
   _id: string;
@@ -47,7 +46,6 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   const { user, isLoading, checkAuth, logout } = useAuthStore();
-  const API_BASE = "https://thumnail-ai.onrender.com/api";
 
   useEffect(() => {
     const checkAuthStatus = async () => {
@@ -110,7 +108,7 @@ export default function Dashboard() {
         return;
       }
 
-      const response = await axios.get(`${API_BASE}/generate/thumbnails`);
+      const response = await api.get('/generate/thumbnails');
       setThumbnails(response.data.thumbnails);
     } catch (error) {
       console.error("Failed to load thumbnails:", error);
@@ -149,7 +147,7 @@ export default function Dashboard() {
         formData.append('referenceImage', uploadedImage);
       }
 
-      const response = await axios.post(`${API_BASE}/generate/rewrite-query`, formData, {
+      const response = await api.post('/generate/rewrite-query', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -205,7 +203,7 @@ export default function Dashboard() {
         formData.append('referenceImage', uploadedImage);
       }
 
-      const response = await axios.post(`${API_BASE}/generate/images`, formData, {
+      const response = await api.post('/generate/images', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -273,7 +271,7 @@ export default function Dashboard() {
       const token = localStorage.getItem("token");
       if (!token) return;
 
-      await axios.delete(`${API_BASE}/generate/thumbnails/${thumbnailId}`);
+      await api.delete(`/generate/thumbnails/${thumbnailId}`);
 
       // Reload thumbnails
       await loadThumbnails();

@@ -3,42 +3,25 @@ import { useEffect, useState } from "react";
 import Dashboard from "./pages/Dashboard";
 import LandingPage from "./pages/LandingPage";
 import { ToastProvider } from "./components/ui/toast";
+import { useAuthStore } from "@/stores/authStore";
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const { isAuthenticated, checkAuth } = useAuthStore();
+  const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem("token");
-      if (token) {
-        try {
-          // Verify token by calling profile endpoint
-          const response = await fetch("https://thumnail-ai.onrender.com/api/auth/profile", {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          if (response.ok) {
-            setIsAuthenticated(true);
-          } else {
-            // Token is invalid, remove it
-            localStorage.removeItem("token");
-            setIsAuthenticated(false);
-          }
-        } catch (error) {
-          console.error("Auth check failed:", error);
-          localStorage.removeItem("token");
-          setIsAuthenticated(false);
-        }
-      } else {
-        setIsAuthenticated(false);
+    const runCheck = async () => {
+      try {
+        await checkAuth();
+      } finally {
+        setHasCheckedAuth(true);
       }
-      setIsLoading(false);
     };
 
-    checkAuth();
-  }, []);
+    runCheck();
+  }, [checkAuth]);
 
-  if (isLoading) {
+  if (!hasCheckedAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-500"></div>

@@ -27,7 +27,7 @@ interface AuthState {
 const API_BASE = "https://thumnail-ai.onrender.com/api";
 
 // Create axios instance with proper timeout for Render free tier
-const api = axios.create({
+export const api = axios.create({
   baseURL: API_BASE,
   timeout: 15000, // 15 seconds for Render free tier
 });
