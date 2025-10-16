@@ -357,8 +357,7 @@ export async function editImage(req: AuthRequest, res: Response) {
         output_format: "png",
         output_quality: 100,
         num_outputs: 1,
-        num_inference_steps: 10,
-        guidance: 7,
+        num_inference_steps: 4,
         image: base64Image,
       },
     };
