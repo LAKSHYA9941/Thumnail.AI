@@ -340,6 +340,15 @@ export async function editImage(req: AuthRequest, res: Response) {
 
     const combinedPrompt = `${existingThumbnail.prompt}\nRequested changes: ${editPrompt}`;
 
+    let base64Image: string | undefined;
+    try {
+      const originalResponse = await axios.get(existingThumbnail.imageUrl, { responseType: "arraybuffer" });
+      base64Image = `data:image/png;base64,${Buffer.from(originalResponse.data).toString("base64")}`;
+    } catch (downloadError) {
+      console.error("Failed to download original image for editing", downloadError);
+      return res.status(500).json({ error: "Unable to fetch original image for editing." });
+    }
+
     const payload: any = {
       version: REPLICATE_VERSION,
       input: {
@@ -348,9 +357,9 @@ export async function editImage(req: AuthRequest, res: Response) {
         output_format: "png",
         output_quality: 100,
         num_outputs: 1,
-        num_inference_steps: 6,
-        go_fast: false,
-        image: existingThumbnail.imageUrl,
+        num_inference_steps: 10,
+        guidance: 7,
+        image: base64Image,
       },
     };
 
