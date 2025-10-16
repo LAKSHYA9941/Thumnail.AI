@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, Copy, Trash2, RefreshCw } from "lucide-react";
+import { Download, Copy, Trash2, RefreshCw, Wand2 } from "lucide-react";
 
 interface Thumbnail {
   _id: string;
@@ -16,9 +16,10 @@ interface Props {
   downloadImage: (url: string, prompt: string) => void | Promise<void>;
   copyToClipboard: (text: string) => void;
   deleteThumbnail: (id: string) => void | Promise<void>;
+  startEdit: (thumbnail: Thumbnail) => void;
 }
 
-export default function HistorySection({ thumbnails, downloadImage, copyToClipboard, deleteThumbnail }: Props) {
+export default function HistorySection({ thumbnails, downloadImage, copyToClipboard, deleteThumbnail, startEdit }: Props) {
   return (
     <div className="space-y-6">
       <Card>
@@ -46,6 +47,9 @@ export default function HistorySection({ thumbnails, downloadImage, copyToClipbo
                   <div className="flex space-x-2">
                     <Button size="sm" variant="outline" onClick={() => downloadImage(thumbnail.imageUrl, thumbnail.prompt)}>
                       <Download className="w-4 h-4" />
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => startEdit(thumbnail)}>
+                      <Wand2 className="w-4 h-4" />
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => copyToClipboard(thumbnail.prompt)}>
                       <Copy className="w-4 h-4" />

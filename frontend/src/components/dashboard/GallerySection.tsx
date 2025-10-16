@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Image as ImageIcon, Settings, Download, Copy, Trash2, Plus } from "lucide-react";
+import { Image as ImageIcon, Settings, Download, Copy, Trash2, Plus, Wand2 } from "lucide-react";
 
 interface Thumbnail {
   _id: string;
@@ -20,9 +20,10 @@ interface Props {
   downloadImage: (url: string, prompt: string) => void | Promise<void>;
   copyToClipboard: (text: string) => void;
   deleteThumbnail: (id: string) => void | Promise<void>;
+  startEdit: (thumbnail: Thumbnail) => void;
 }
 
-export default function GallerySection({ thumbnails, setActiveChat, downloadImage, copyToClipboard, deleteThumbnail }: Props) {
+export default function GallerySection({ thumbnails, setActiveChat, downloadImage, copyToClipboard, deleteThumbnail, startEdit }: Props) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -54,6 +55,10 @@ export default function GallerySection({ thumbnails, setActiveChat, downloadImag
                         <DropdownMenuItem onClick={() => downloadImage(thumbnail.imageUrl, thumbnail.prompt)}>
                           <Download className="w-4 h-4 mr-2" />
                           Download
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => startEdit(thumbnail)}>
+                          <Wand2 className="w-4 h-4 mr-2" />
+                          Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => copyToClipboard(thumbnail.prompt)}>
                           <Copy className="w-4 h-4 mr-2" />

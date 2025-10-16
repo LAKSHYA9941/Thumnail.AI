@@ -9,6 +9,18 @@ import HistorySection from "@/components/dashboard/HistorySection";
 import { useDropzone } from "react-dropzone";
 import { useToast } from "@/components/ui/toast";
 import { api, useAuthStore } from "@/stores/authStore";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Thumbnail {
   _id: string;
@@ -41,6 +53,9 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("chat");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [recentGenerated, setRecentGenerated] = useState<Array<{ imageUrl: string; prompt: string }>>([]);
+  const [editTarget, setEditTarget] = useState<Thumbnail | null>(null);
+  const [editPrompt, setEditPrompt] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const { addToast } = useToast();
   const navigate = useNavigate();
@@ -256,14 +271,27 @@ export default function Dashboard() {
     }
   };
 
-  const downloadImage = (imageUrl: string, prompt: string) => {
-    const link = document.createElement('a');
-    link.href = imageUrl;
-    link.download = `thumbnail_${prompt.slice(0, 30).replace(/[^a-z0-9_-]/gi, '_')}_${Date.now()}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    addToast('success', 'Image download triggered');
+  const downloadImage = async (imageUrl: string, prompt: string) => {
+    try {
+      const response = await fetch(imageUrl, { mode: 'cors' });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `thumbnail_${prompt.slice(0, 30).replace(/[^a-z0-9_-]/gi, '_')}_${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 0);
+      addToast('success', 'Image download started');
+    } catch (error) {
+      console.error("Failed to download image:", error);
+      addToast('error', 'Unable to download image. Please try again.');
+    }
   };
 
   const deleteThumbnail = async (thumbnailId: string) => {
@@ -285,6 +313,43 @@ export default function Dashboard() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     addToast('success', "Copied to clipboard!");
+  };
+
+  const startEdit = (thumbnail: Thumbnail) => {
+    setEditTarget(thumbnail);
+    setEditPrompt("");
+  };
+
+  const submitEdit = async () => {
+    if (!editTarget || !editPrompt.trim()) {
+      addToast('error', 'Please describe the changes you want.');
+      return;
+    }
+
+    setIsEditing(true);
+    try {
+      const response = await api.post('/generate/edit', {
+        thumbnailId: editTarget._id,
+        editPrompt: editPrompt.trim(),
+      });
+
+      const urls: string[] | undefined = response?.data?.urls;
+      if (!urls || urls.length === 0) {
+        addToast('error', 'Editing succeeded but no image URL was returned.');
+      } else {
+        addToast('success', 'Image edited successfully!');
+        await loadThumbnails();
+      }
+
+      setEditTarget(null);
+      setEditPrompt("");
+    } catch (error: any) {
+      console.error('Failed to edit image:', error);
+      const serverMsg = error.response?.data?.error || 'Unable to edit image.';
+      addToast('error', serverMsg);
+    } finally {
+      setIsEditing(false);
+    }
   };
 
   // Reserved for future loading states
@@ -355,6 +420,7 @@ export default function Dashboard() {
               downloadImage={downloadImage}
               copyToClipboard={copyToClipboard}
               deleteThumbnail={deleteThumbnail}
+              startEdit={startEdit}
             />
           </TabsContent>
 
@@ -365,10 +431,47 @@ export default function Dashboard() {
               downloadImage={downloadImage}
               copyToClipboard={copyToClipboard}
               deleteThumbnail={deleteThumbnail}
+              startEdit={startEdit}
             />
           </TabsContent>
         </Tabs>
       </main>
+
+      <Dialog open={!!editTarget} onOpenChange={(open) => { if (!open) { setEditTarget(null); setEditPrompt(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Thumbnail</DialogTitle>
+            <DialogDescription>
+              Provide instructions to modify the selected thumbnail. The AI will apply these updates while keeping the original composition.
+            </DialogDescription>
+          </DialogHeader>
+          {editTarget && (
+            <div className="space-y-4">
+              <div className="rounded-lg overflow-hidden">
+                <img src={editTarget.imageUrl} alt="Thumbnail to edit" className="w-full h-48 object-cover" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editPrompt">Describe the changes</Label>
+                <Textarea
+                  id="editPrompt"
+                  value={editPrompt}
+                  onChange={(e) => setEditPrompt(e.target.value)}
+                  placeholder="e.g., brighten the colors, add bold yellow text saying 'New Tips', make the subject smile"
+                  className="min-h-[120px]"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter className="sm:justify-end">
+            <DialogClose asChild>
+              <Button variant="outline" disabled={isEditing}>Cancel</Button>
+            </DialogClose>
+            <Button onClick={submitEdit} disabled={isEditing}>
+              {isEditing ? 'Applying changes...' : 'Apply Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

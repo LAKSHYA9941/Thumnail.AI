@@ -3,7 +3,8 @@ import {
   generateImages, 
   rewriteQuery, 
   getUserThumbnails, 
-  deleteThumbnail 
+  deleteThumbnail,
+  editImage
 } from "../controllers/generate.controller.js";
 import { authMiddleware } from "../middlewares/singleUserAuth.js";
 import multer from "multer";
@@ -92,6 +93,7 @@ router.post("/generate/rewrite-query", upload.single('referenceImage'), handleMu
 
 // Protected routes - Add multer middleware for file uploads
 router.post("/generate/images", authMiddleware, upload.single('referenceImage'), handleMulterError, generateImages);
+router.post("/generate/edit", authMiddleware, editImage);
 router.get("/generate/thumbnails", authMiddleware, getUserThumbnails);
 router.delete("/generate/thumbnails/:thumbnailId", authMiddleware, deleteThumbnail);
 

@@ -97,7 +97,7 @@ export async function rewriteQuery(req: Request, res: Response) {
         model: "qwen/qwen-2.5-72b-instruct:free",
         temperature: 1,
         messages: [
-          { role: "system", content: "you are a prompt engineer that helps to create the best possible prompts for text to image AI models so that user can get the best possible results for their youtube video. Use the techniques of modern thumbnail makers." },
+          { role: "system", content: "you are a prompt engineer that helps to create the best possible prompts with clarifying the user's prompt and segregate his her requirement like title name image description number of objects , their palcements , their name, for better results for text to image AI models so that user can get the best possible results for their youtube video. Use the techniques of modern thumbnail makers." },
           { role: "user", content: userContent },
         ],
         max_tokens: 200,
@@ -307,6 +307,160 @@ export async function generateImages(req: AuthRequest, res: Response) {
       res.status(500).json({ error: err.message });
     } else {
       res.status(500).json({ error: "Image generation failed" });
+    }
+  }
+}
+
+export async function editImage(req: AuthRequest, res: Response) {
+  try {
+    const { thumbnailId, editPrompt } = req.body;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    if (!thumbnailId || !editPrompt) {
+      return res.status(400).json({ error: "Thumbnail ID and edit prompt are required" });
+    }
+
+    if (!REPLICATE_API_TOKEN) {
+      return res.status(500).json({
+        error: "AI service configuration missing",
+        details: "Replicate API token is required for image editing. Please check your environment variables."
+      });
+    }
+
+    const existingThumbnail = await Thumbnail.findOne({ _id: thumbnailId, userId });
+    if (!existingThumbnail) {
+      return res.status(404).json({ error: "Thumbnail not found" });
+    }
+
+    const systemPrompt = `You are an expert at enhancing existing YouTube thumbnails. When modifying the provided image, preserve the overall composition while applying the requested changes. Keep the output at 1280x720 (16:9) and ensure the result remains bold, clear, and attention-grabbing.`;
+
+    const combinedPrompt = `${existingThumbnail.prompt}\nRequested changes: ${editPrompt}`;
+
+    const payload: any = {
+      version: REPLICATE_VERSION,
+      input: {
+        prompt: `${systemPrompt}\n\nOriginal thumbnail context: ${existingThumbnail.prompt}\n\nApply the following updates: ${editPrompt}`,
+        aspect_ratio: "16:9",
+        output_format: "png",
+        output_quality: 100,
+        num_outputs: 1,
+        num_inference_steps: 6,
+        go_fast: false,
+        image: existingThumbnail.imageUrl,
+      },
+    };
+
+    const replicateHeaders = {
+      Authorization: `Token ${REPLICATE_API_TOKEN}`,
+      "Content-Type": "application/json",
+    };
+
+    const startTime = Date.now();
+    const prediction = await axios.post(
+      "https://api.replicate.com/v1/predictions",
+      payload,
+      { headers: replicateHeaders }
+    );
+
+    const predictionId = prediction.data.id;
+    let predictionStatus = prediction.data.status;
+    let predictionOutput: string[] | undefined;
+    let predictionError: string | undefined;
+
+    while (predictionStatus === "starting" || predictionStatus === "processing") {
+      if (Date.now() - startTime > REPLICATE_TIMEOUT) {
+        await axios.post(
+          `https://api.replicate.com/v1/predictions/${predictionId}/cancel`,
+          {},
+          { headers: replicateHeaders }
+        ).catch(() => {});
+        return res.status(504).json({
+          error: "Image editing timed out",
+          details: "Replicate prediction exceeded the configured timeout",
+        });
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, REPLICATE_POLL_INTERVAL));
+
+      const poll = await axios.get(
+        `https://api.replicate.com/v1/predictions/${predictionId}`,
+        { headers: replicateHeaders }
+      );
+
+      predictionStatus = poll.data.status;
+      predictionOutput = poll.data.output;
+      predictionError = poll.data.error;
+    }
+
+    if (predictionStatus !== "succeeded" || !predictionOutput?.length) {
+      console.error("Replicate edit failed", predictionError || predictionStatus);
+      return res.status(500).json({
+        error: "Image editing failed",
+        details: predictionError || `Replicate status: ${predictionStatus}`,
+      });
+    }
+
+    const base64s: string[] = [];
+    for (const outputUrl of predictionOutput) {
+      try {
+        const { data: imgData } = await axios.get(outputUrl, { responseType: "arraybuffer" });
+        base64s.push(`data:image/png;base64,${Buffer.from(imgData).toString("base64")}`);
+      } catch (downloadErr) {
+        console.warn("Failed to download Replicate edit output", downloadErr);
+      }
+    }
+
+    if (!base64s.length) {
+      return res.status(500).json({ error: "No image data received from Replicate" });
+    }
+
+    const urls: string[] = [];
+    for (const src of base64s) {
+      const buffer = Buffer.from(src.split(",")[1], "base64");
+      const uploadRes = await cloudinary.uploader.upload(
+        `data:image/png;base64,${buffer.toString("base64")}`,
+        {
+          folder: "thumbnails",
+          resource_type: "image",
+          transformation: [
+            {
+              width: 1280,
+              height: 720,
+              crop: "pad",
+              background: "auto",
+              quality: "auto",
+              fetch_format: "auto"
+            },
+          ],
+        }
+      );
+
+      urls.push(uploadRes.secure_url);
+      await new Thumbnail({
+        userId,
+        prompt: combinedPrompt,
+        imageUrl: uploadRes.secure_url,
+        originalImageUrl: existingThumbnail.imageUrl,
+        queryRewrite: existingThumbnail.queryRewrite,
+      }).save();
+    }
+
+    res.json({ urls });
+  } catch (err: any) {
+    console.error("Image edit error:", err.response?.data || err.message);
+
+    if (err.response?.data) {
+      console.error("Replicate API error:", err.response.data);
+    }
+
+    if (err instanceof Error) {
+      res.status(500).json({ error: err.message });
+    } else {
+      res.status(500).json({ error: "Image editing failed" });
     }
   }
 }
